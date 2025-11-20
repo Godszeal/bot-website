@@ -29,4 +29,6 @@ next-env.d.ts
 baileys_sessions/
 auth-info/
 session/
-*.json
+baileys_sessions/**/*.json
+auth-info/**/*.json
+session/**/*.json
