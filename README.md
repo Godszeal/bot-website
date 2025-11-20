@@ -1,4 +1,4 @@
-# WhatsApp Bot Deployment Platform
+# God's Zeal Xmd - WhatsApp Bot Deployment Platform
 
 A comprehensive platform for deploying and managing WhatsApp bots using Baileys library with automated GitHub deployment.
 
@@ -20,7 +20,7 @@ A comprehensive platform for deploying and managing WhatsApp bots using Baileys 
 - **Database**: Supabase (PostgreSQL)
 - **Authentication**: Supabase Auth with GitHub OAuth
 - **WhatsApp Integration**: @whiskeysockets/baileys
-- **Deployment**: GitHub Actions
+- **Deployment**: GitHub Actions, Render
 - **Version Control**: GitHub API via Octokit
 
 ## Quick Start
@@ -154,6 +154,45 @@ All tables have Row Level Security (RLS) enabled.
 - **Admin Access**: Restricted to verified admin emails
 - **OAuth Scopes**: Minimal required permissions (repo, workflow)
 
+## Deployment Options
+
+### Option 1: Render (Recommended for Production)
+
+**Why Render?**
+- Persistent WebSocket connections (required for Baileys)
+- No timeout limits on connections
+- Docker support for reliable deployments
+- Auto-deploys from GitHub
+- Free SSL certificates
+
+See [DEPLOY_RENDER.md](./DEPLOY_RENDER.md) for detailed instructions.
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
+
+### Option 2: Vercel (Limited Support)
+
+**Limitations:**
+- 60-second function timeout
+- Pairing may timeout before code is entered
+- No persistent file system for sessions
+
+**Deploy to Vercel:**
+\`\`\`bash
+npm install -g vercel
+vercel
+\`\`\`
+
+### Option 3: Cloudflare Pages (Not Recommended)
+
+**Limitations:**
+- 30-second worker timeout
+- WebSocket limitations
+- No persistent storage
+
+See [DEPLOY_CLOUDFLARE.md](./DEPLOY_CLOUDFLARE.md) for details.
+
+**Recommendation:** Use Render for production deployments to ensure reliable WhatsApp pairing and bot connectivity.
+
 ## Development
 
 \`\`\`bash
@@ -170,41 +209,29 @@ npm start
 npm run lint
 \`\`\`
 
-## Deployment
-
-The platform is designed to be deployed on Vercel:
-
-1. Connect your GitHub repository to Vercel
-2. Configure environment variables (Supabase credentials)
-3. Deploy!
-
-Vercel will automatically:
-- Build the Next.js application
-- Set up serverless functions for API routes
-- Configure edge functions for optimal performance
-
 ## Troubleshooting
 
-### Build Errors
+### Pairing Code Not Linking
 
-If you encounter build errors related to Baileys:
-- Ensure Node.js 18+ is installed
-- Clear `.next` folder and rebuild
-- Check that all dependencies are installed
+**Issue**: Code generates but shows "Couldn't link device"
 
-### Pairing Code Issues
+**Solutions:**
+1. **Use Render instead of Vercel** - Vercel's timeout limits prevent proper pairing
+2. Enter the code within 2 minutes of generation
+3. Ensure phone number includes country code (e.g., +1234567890)
+4. Try regenerating the code
+5. Check application logs for Baileys connection errors
 
-If pairing codes aren't generating:
-- Verify phone number format (include country code)
-- Check server logs for Baileys errors
-- Ensure bot status is "pairing" in database
+### Deployment Platform Issues
 
-### GitHub Integration Issues
+**Issue**: Pairing works locally but not in production
 
-If repository forking fails:
-- Verify GitHub token has correct permissions
-- Check token hasn't expired
-- Ensure main repository URL is correct
+**Solution:** The issue is likely due to serverless function timeouts:
+- **Vercel**: 60-second timeout (insufficient for pairing)
+- **Cloudflare**: 30-second timeout (insufficient for pairing)
+- **Render**: No timeout limits (recommended)
+
+Migrate to Render for reliable production deployments.
 
 ## Contributing
 
@@ -231,4 +258,9 @@ For issues or questions:
 - [Baileys](https://github.com/WhiskeySockets/Baileys) - WhatsApp Web API
 - [Supabase](https://supabase.com) - Backend infrastructure
 - [Next.js](https://nextjs.org) - React framework
-- [Vercel](https://vercel.com) - Deployment platform
+- [Render](https://render.com) - Recommended deployment platform
+- [Vercel](https://vercel.com) - Alternative deployment option
+
+---
+
+Made with ❤️ for God's Zeal Xmd

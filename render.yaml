@@ -1,0 +1,57 @@
+services:
+  - type: web
+    name: gods-zeal-xmd-platform
+    runtime: docker
+    plan: starter
+    region: oregon
+    branch: main
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - fromGroup: supabase-env
+      - fromGroup: github-oauth
+
+envVarGroups:
+  - name: supabase-env
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_POSTGRES_URL
+        sync: false
+      - key: SUPABASE_POSTGRES_PRISMA_URL
+        sync: false
+      - key: SUPABASE_POSTGRES_URL_NON_POOLING
+        sync: false
+      - key: SUPABASE_POSTGRES_HOST
+        sync: false
+      - key: SUPABASE_POSTGRES_DATABASE
+        sync: false
+      - key: SUPABASE_POSTGRES_USER
+        sync: false
+      - key: SUPABASE_POSTGRES_PASSWORD
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: NEXT_PUBLIC_SITE_URL
+        sync: false
+      - key: NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL
+        sync: false
+
+  - name: github-oauth
+    envVars:
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false

@@ -1,0 +1,13 @@
+name = "gods-zeal-xmd-platform"
+compatibility_date = "2024-11-20"
+pages_build_output_dir = ".next"
+
+[env.production]
+name = "gods-zeal-xmd-platform"
+route = "your-domain.com/*"
+
+[env.production.vars]
+NODE_ENV = "production"
+
+# Note: Add sensitive environment variables via Cloudflare dashboard
+# Do not commit secrets to this file
