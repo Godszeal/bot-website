@@ -124,10 +124,6 @@ export function GitHubConnectCard({ bot }: GitHubConnectCardProps) {
     )
   }
 
-  const handleRefresh = () => {
-    window.location.reload()
-  }
-
   return (
     <Card>
       <CardHeader>
