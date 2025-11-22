@@ -12,7 +12,27 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (November 22, 2025)
 
-**Connection Workflow Fixed**:
+**Bot Deletion & Cleanup Enhanced**:
+- ✅ Graceful disconnect of active Baileys connections when bot is deleted
+- ✅ All running workflows/timers stopped (keep-alive, pairing timers)
+- ✅ Session files (creds.json) and entire session directory completely cleared
+- ✅ Bot logs automatically deleted on bot removal
+- ✅ Deployment history cleared
+- ✅ Clean database removal with cascade deletes
+
+**GitHub OAuth Redirect URL Fixed**:
+- ✅ Now uses deployment URL (`NEXT_PUBLIC_SITE_URL`) instead of localhost
+- ✅ Updated login page GitHub OAuth redirect
+- ✅ Updated sign-up page GitHub OAuth redirect
+- ✅ Fallback to window.location.origin for local development
+- ✅ Proper environment-aware configuration across all auth flows
+
+**Bot Status Updates on New Link**:
+- ✅ Status updates when device successfully links (pairing → active → deployed)
+- ✅ Proper tracking of connection state through maintain-pairing endpoint
+- ✅ Database updates reflect current bot state in real-time
+
+**Connection Workflow Fixed** (Previous):
 - ✅ Fixed endless reconnection loop - bot no longer reconnects after pairing completes
 - ✅ Connection success message now sent IMMEDIATELY when device links (before deployment)
 - ✅ Fork and deploy moved from create route to maintain-pairing endpoint

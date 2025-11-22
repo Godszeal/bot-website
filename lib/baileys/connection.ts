@@ -15,6 +15,41 @@ const activeConnections = new Map<
   }
 >()
 
+// Function to gracefully disconnect and cleanup a bot connection
+export async function disconnectBot(botId: string) {
+  const connData = activeConnections.get(botId)
+  
+  if (connData) {
+    console.log("[v0] 🔌 Disconnecting bot:", botId)
+    
+    // Clear timers
+    if (connData.keepAliveTimer) {
+      clearInterval(connData.keepAliveTimer)
+      console.log("[v0] Cleared keep-alive timer")
+    }
+    if (connData.pairingTimer) {
+      clearTimeout(connData.pairingTimer)
+      console.log("[v0] Cleared pairing timer")
+    }
+    
+    // Close socket connection
+    try {
+      if (connData.sock) {
+        connData.sock.end()
+        console.log("[v0] Socket closed successfully")
+      }
+    } catch (error) {
+      console.log("[v0] ⚠️ Error closing socket:", error)
+    }
+    
+    // Remove from active connections
+    activeConnections.delete(botId)
+    console.log("[v0] ✅ Connection removed from active map")
+  } else {
+    console.log("[v0] ℹ️ No active connection found for bot:", botId)
+  }
+}
+
 export interface BaileysConnectionOptions {
   botId: string
   phoneNumber: string
