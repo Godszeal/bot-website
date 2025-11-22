@@ -90,11 +90,11 @@ This token allows the platform to automatically fork repositories for users.
    **Option B: Via SQL** (Quick setup now)
    - Go to Supabase SQL Editor
    - Run this query (replace `YOUR_TOKEN_HERE`):
-   ```sql
+   \`\`\`sql
    UPDATE public.admin_settings 
    SET setting_value = 'YOUR_TOKEN_HERE'
    WHERE setting_key = 'github_token';
-   ```
+   \`\`\`
 
 ## 📱 How to Test
 
@@ -164,7 +164,7 @@ This token allows the platform to automatically fork repositories for users.
 9. **Bot Active** → User can manage bot from dashboard
 
 ### Repository Structure (After Fork):
-```
+\`\`\`
 God-s-Zeal-Xmd/
 ├── session/
 │   └── creds.json          # WhatsApp session credentials
@@ -173,7 +173,7 @@ God-s-Zeal-Xmd/
 │       └── deploy.yml      # Auto-deployment workflow
 ├── [... bot code files ...]
 └── package.json
-```
+\`\`\`
 
 ## 🚨 Troubleshooting
 

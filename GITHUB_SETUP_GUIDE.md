@@ -69,11 +69,11 @@ You have two options:
 1. Go to Supabase SQL Editor
 2. Run this query (replace YOUR_TOKEN_HERE with your actual token):
 
-```sql
+\`\`\`sql
 UPDATE public.admin_settings 
 SET setting_value = 'YOUR_TOKEN_HERE'
 WHERE setting_key = 'github_token';
-```
+\`\`\`
 
 ## Step 6: Update Redirect URLs in Environment
 
