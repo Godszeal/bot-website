@@ -23,6 +23,7 @@ export interface BaileysConnectionOptions {
   onConnected?: (sessionData: any) => void
   onDisconnected?: (reason: string) => void
   channelJid?: string
+  sendWelcomeMessage?: boolean
 }
 
 export async function createBaileysConnection(options: BaileysConnectionOptions) {
@@ -36,7 +37,7 @@ export async function createBaileysConnection(options: BaileysConnectionOptions)
     delay,
   } = await import("@whiskeysockets/baileys")
 
-  const { botId, phoneNumber, onPairingCode, onQR, onConnected, onDisconnected, channelJid } = options
+  const { botId, phoneNumber, onPairingCode, onQR, onConnected, onDisconnected, channelJid, sendWelcomeMessage = true } = options
 
   const sessionDir = path.join("/tmp", "baileys_sessions", botId)
 
@@ -189,15 +190,17 @@ export async function createBaileysConnection(options: BaileysConnectionOptions)
 
         await delay(3000)
 
-        try {
-          const welcomeMsg = `✅ *Connection Successful!*\n\n📱 *Phone Number:* ${phoneNumber}\n🤖 *Bot:* God's Zeal Xmd\n⏰ *Connected:* ${new Date().toLocaleString()}\n\n🎉 Your WhatsApp bot is now active and ready to use!\n\nThank you for using God's Zeal Xmd! 🚀`
+        if (sendWelcomeMessage) {
+          try {
+            const welcomeMsg = `✅ *Connection Successful!*\n\n📱 *Phone Number:* ${phoneNumber}\n🤖 *Bot:* God's Zeal Xmd\n⏰ *Connected:* ${new Date().toLocaleString()}\n\n🎉 Your WhatsApp bot is now active!\n\n⚙️ Setting up your GitHub repository...`
 
-          await sock.sendMessage(sock.user!.id, {
-            text: welcomeMsg,
-          })
-          console.log("[v0] ✅ Welcome message sent successfully to user's DM")
-        } catch (msgError) {
-          console.error("[v0] ❌ Error sending welcome message:", msgError)
+            await sock.sendMessage(sock.user!.id, {
+              text: welcomeMsg,
+            })
+            console.log("[v0] ✅ Welcome message sent successfully to user's DM")
+          } catch (msgError) {
+            console.error("[v0] ❌ Error sending welcome message:", msgError)
+          }
         }
 
         if (channelJid) {
@@ -283,6 +286,28 @@ export function closeConnection(botId: string) {
     }
     connData.sock.end()
     activeConnections.delete(botId)
+  }
+}
+
+export async function sendRepositoryNotification(botId: string, phoneNumber: string, repoUrl: string) {
+  try {
+    const connData = activeConnections.get(botId)
+    if (!connData?.sock) {
+      console.log("[v0] No active connection to send repository notification")
+      return
+    }
+
+    const { delay } = await import("@whiskeysockets/baileys")
+    await delay(2000)
+
+    const successMsg = `✅ *GitHub Repository Created!*\n\n🔗 *Your Bot Repository:*\n${repoUrl}\n\n📦 Your WhatsApp session has been securely uploaded to your GitHub repository.\n\n🚀 *What's Next?*\n• View your bot code on GitHub\n• Check the GitHub Actions workflow\n• Your bot is ready to deploy!\n\nYou can manage everything from your dashboard.\n\nThank you for using God's Zeal Xmd! 💚`
+
+    await connData.sock.sendMessage(connData.sock.user!.id, {
+      text: successMsg,
+    })
+    console.log("[v0] ✅ Repository notification sent successfully")
+  } catch (error) {
+    console.error("[v0] ❌ Error sending repository notification:", error)
   }
 }
 

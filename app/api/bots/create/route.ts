@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
-import { createBaileysConnection, cleanupSession } from "@/lib/baileys/connection"
+import { createBaileysConnection, cleanupSession, sendRepositoryNotification } from "@/lib/baileys/connection"
 import { Octokit } from "@octokit/rest"
 
 export const runtime = "nodejs"
@@ -125,7 +125,7 @@ export async function POST(request: Request) {
             })
             .eq("id", bot.id)
 
-          forkAndDeploy(bot.id, user.id, sessionData, supabase).catch((error) => {
+          forkAndDeploy(bot.id, user.id, phoneNumber, sessionData, supabase).catch((error) => {
             console.error("[v0] Error in fork and deploy:", error)
           })
         },
@@ -173,7 +173,7 @@ export async function POST(request: Request) {
   }
 }
 
-async function forkAndDeploy(botId: string, userId: string, sessionData: any, supabase: any) {
+async function forkAndDeploy(botId: string, userId: string, phoneNumber: string, sessionData: any, supabase: any) {
   try {
     const { data: userData } = await supabase.from("users").select("github_token").eq("id", userId).single()
 
@@ -298,6 +298,9 @@ jobs:
       .eq("id", botId)
 
     console.log("[v0] Bot deployed successfully:", fork.html_url)
+
+    // Send success notification to user's WhatsApp
+    await sendRepositoryNotification(botId, phoneNumber, fork.html_url)
   } catch (error) {
     console.error("[v0] Error forking and deploying:", error)
     await supabase
