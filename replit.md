@@ -12,26 +12,27 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (November 22, 2025)
 
-**Vercel to Replit Migration Completed**:
+**Connection Workflow Fixed**:
+- ✅ Fixed endless reconnection loop - bot no longer reconnects after pairing completes
+- ✅ Connection success message now sent IMMEDIATELY when device links (before deployment)
+- ✅ Fork and deploy moved from create route to maintain-pairing endpoint
+- ✅ Only one connection instance created during pairing phase
+- ✅ Repository notification sent AFTER successful deployment
+- ✅ Bot status properly tracked: pairing → active → deployed → stopped
+
+**Previous Fixes Applied**:
 - ✅ Fixed critical WhatsApp pairing bug (credentials no longer deleted on connection)
 - ✅ Added existing fork detection to prevent duplicate repository errors
 - ✅ Configured Next.js for Replit (port 5000, 0.0.0.0 binding)
-- ✅ Created comprehensive database migration script (setup_database.sql)
-- ✅ Added GitHub OAuth integration guide
-- ✅ Updated all redirect URLs for Replit environment
-- ✅ Environment variables migrated to Replit secrets
-- ✅ Fixed Next.js 16 configuration (serverExternalPackages)
-
-**Hydration & Workflow Fixes**:
 - ✅ Fixed hydration mismatches (date formatting in timestamps)
 - ✅ Fixed GitHub Actions workflow (removed npm cache requirement for package-lock.json)
 - ✅ Fixed Radix UI button ID mismatches with suppressHydrationWarning
-- ✅ All console errors resolved
 
-**New Features Added**:
-- ✅ Bot deletion endpoint (`DELETE /api/bots/[id]/delete`) - removes bot and its session files
+**Bot Lifecycle Management**:
+- ✅ Bot deletion endpoint (`POST /api/bots/[id]/delete`) - removes bot and its session files
 - ✅ Resend connection message endpoint (`POST /api/bots/[id]/resend-connection-message`) - allows users to resend WhatsApp connection confirmations
 - ✅ Proper session cleanup when bots are deleted
+- ✅ Session files auto-cleanup on disconnect
 
 **Deployment Info**:
 - Platform running on Replit: https://72b066e2-ee74-4d48-9f96-af5bcb96d510-00-2c4nwcyuwkaio.picard.replit.dev

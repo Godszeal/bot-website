@@ -2,9 +2,149 @@ import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 import path from "path"
 import fs from "fs"
+import { sendRepositoryNotification } from "@/lib/baileys/connection"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
+
+async function forkAndDeployAsync(botId: string, userId: string, phoneNumber: string, sessionData: any, supabase: any) {
+  try {
+    const { data: userData } = await supabase.from("users").select("github_token").eq("id", userId).single()
+    const { data: settings } = await supabase
+      .from("admin_settings")
+      .select("setting_key, setting_value")
+      .in("setting_key", ["main_bot_repo_url", "github_token"])
+
+    const mainRepoUrl = settings?.find((s: any) => s.setting_key === "main_bot_repo_url")?.setting_value
+    const adminToken = settings?.find((s: any) => s.setting_key === "github_token")?.setting_value
+
+    if (!mainRepoUrl) throw new Error("Main bot repository URL not configured")
+
+    const [repoOwner, repoName] = mainRepoUrl.split("/").slice(-2)
+    const octokit = (await import("@octokit/rest")).Octokit
+    const githubToken = userData?.github_token || adminToken
+
+    if (!githubToken) throw new Error("GitHub token not available")
+
+    const client = new octokit({ auth: githubToken })
+
+    let fork = null
+    const { data: existingForks } = await client.repos.listForks({
+      owner: repoOwner,
+      repo: repoName,
+    })
+
+    const userFork = existingForks?.find((f: any) => f.owner.login === userData?.github_username)
+    if (userFork) {
+      fork = userFork
+      console.log("[v0] Found existing fork:", fork.full_name)
+    } else {
+      const { data: newFork } = await client.repos.createFork({
+        owner: repoOwner,
+        repo: repoName,
+      })
+      fork = newFork
+      await new Promise((resolve) => setTimeout(resolve, 8000))
+    }
+
+    const credsContent = JSON.stringify(sessionData.creds, null, 2)
+
+    let credsSha: string | undefined
+    try {
+      const { data: existingCreds } = await client.repos.getContent({
+        owner: fork.owner.login,
+        repo: fork.name,
+        path: "session/creds.json",
+      })
+      if ("sha" in existingCreds) {
+        credsSha = existingCreds.sha
+      }
+    } catch (error) {
+      console.log("[v0] No existing creds.json found")
+    }
+
+    await client.repos.createOrUpdateFileContents({
+      owner: fork.owner.login,
+      repo: fork.name,
+      path: "session/creds.json",
+      message: "Add WhatsApp session credentials",
+      content: Buffer.from(credsContent).toString("base64"),
+      ...(credsSha && { sha: credsSha }),
+    })
+
+    const workflowContent = `name: Deploy WhatsApp Bot
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Start bot
+        run: npm start
+        env:
+          NODE_ENV: production
+`
+
+    let workflowSha: string | undefined
+    try {
+      const { data: existingWorkflow } = await client.repos.getContent({
+        owner: fork.owner.login,
+        repo: fork.name,
+        path: ".github/workflows/deploy.yml",
+      })
+      if ("sha" in existingWorkflow) {
+        workflowSha = existingWorkflow.sha
+      }
+    } catch (error) {
+      console.log("[v0] No existing workflow found")
+    }
+
+    await client.repos.createOrUpdateFileContents({
+      owner: fork.owner.login,
+      repo: fork.name,
+      path: ".github/workflows/deploy.yml",
+      message: "Add deployment workflow",
+      content: Buffer.from(workflowContent).toString("base64"),
+      ...(workflowSha && { sha: workflowSha }),
+    })
+
+    await supabase
+      .from("bots")
+      .update({
+        github_repo_url: fork.html_url,
+        github_repo_name: fork.full_name,
+        github_branch: fork.default_branch,
+        status: "deployed",
+        last_deployed_at: new Date().toISOString(),
+      })
+      .eq("id", botId)
+
+    console.log("[v0] Bot deployed successfully:", fork.html_url)
+    await sendRepositoryNotification(botId, phoneNumber, fork.html_url)
+  } catch (error) {
+    console.error("[v0] Error in fork and deploy:", error)
+    await supabase
+      .from("bots")
+      .update({ status: "error" })
+      .eq("id", botId)
+  }
+}
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -135,6 +275,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
             }
 
             isPaired = true
+            
+            // Start fork and deploy after successful pairing
+            console.log("[v0] 🚀 Starting fork and deploy after successful pairing")
+            forkAndDeployAsync(id, user.id, bot.phone_number, sessionData, supabase).catch((error) => {
+              console.error("[v0] ❌ Error in fork and deploy:", error)
+            })
+            
             resolve(true)
           } catch (error) {
             console.error("[v0] ❌ Error processing pairing:", error)

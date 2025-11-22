@@ -240,7 +240,7 @@ export async function createBaileysConnection(options: BaileysConnectionOptions)
         const elapsedTime = Date.now() - (connData.pairingStartTime || 0)
 
         if (elapsedTime < 120000) {
-          // Still within 2-minute pairing window
+          // Still within 2-minute pairing window - reconnect during pairing only
           console.log(
             "[v0] 🔄 Auto-reconnecting during pairing window (",
             Math.floor((120000 - elapsedTime) / 1000),
@@ -252,11 +252,9 @@ export async function createBaileysConnection(options: BaileysConnectionOptions)
           activeConnections.delete(botId)
           onDisconnected?.("Pairing timeout")
         }
-      } else if (shouldReconnect && sock.user) {
-        // Reconnect if already paired
-        console.log("[v0] 🔄 Reconnecting in 5 seconds...")
-        setTimeout(() => createBaileysConnection(options), 5000)
       } else {
+        // Connection is closed - stop reconnecting
+        console.log("[v0] ✋ Connection closed, stopping reconnection")
         activeConnections.delete(botId)
         onDisconnected?.(statusCode === DisconnectReason.loggedOut ? "Logged out" : "Connection closed")
       }
