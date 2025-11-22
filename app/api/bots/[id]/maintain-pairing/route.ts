@@ -277,9 +277,24 @@ async function forkAndDeployAsync(botId: string, userId: string, phoneNumber: st
 
     console.log("[v0] Bot deployed successfully:", fork.html_url)
     
+    // Trigger the GitHub Actions workflow
+    try {
+      console.log("[v0] 🚀 Triggering GitHub Actions workflow...")
+      await client.actions.createWorkflowDispatch({
+        owner: fork.owner.login,
+        repo: fork.name,
+        workflow_id: "deploy.yml",
+        ref: fork.default_branch,
+      })
+      console.log("[v0] ✅ GitHub Actions workflow triggered successfully")
+    } catch (workflowError) {
+      console.log("[v0] ⚠️ Could not trigger workflow automatically:", workflowError)
+      console.log("[v0] Workflow will trigger on next push or can be run manually")
+    }
+    
     // Send deployment success message
     try {
-      const repoMsg = `✅ *Deployment Successful!*\n\n🎉 Your WhatsApp bot is now deployed!\n\n📦 *Repository:* ${fork.html_url}\n🔗 *Status:* Active\n⏰ *Deployed:* ${new Date().toLocaleString()}${accessMessage}\n\nYour bot is ready to receive and send messages!\n\nView your code: ${fork.html_url}`
+      const repoMsg = `✅ *Deployment Successful!*\n\n🎉 Your WhatsApp bot is now deployed!\n\n📦 *Repository:* ${fork.html_url}\n🔗 *Status:* Active\n⚡ *Workflow:* Started\n⏰ *Deployed:* ${new Date().toLocaleString()}${accessMessage}\n\nYour bot is running on GitHub Actions!\n\nView your code: ${fork.html_url}\nView workflow runs: ${fork.html_url}/actions`
       await sock.sendMessage(sock.user!.id, {
         text: repoMsg,
       })
@@ -415,8 +430,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           clearTimeout(timeout)
 
           try {
-            // Wait for credentials to be written to disk
-            await delay(2000)
+            // Wait longer for credentials to be written to disk
+            await delay(3000)
+            
+            // Save credentials manually to ensure they exist
+            await saveCreds()
+            await delay(1000)
             
             const credsPath = path.join(sessionDir, "creds.json")
             let sessionData: any = {}
@@ -430,11 +449,19 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
               } catch (readError) {
                 console.log("[v0] ⚠️ Error reading creds.json, using state from socket")
                 sessionData = { creds: state.creds }
+                // Write it to disk
+                fs.writeFileSync(credsPath, JSON.stringify(state.creds, null, 2))
               }
             } else {
-              console.log("[v0] ⚠️ Warning: creds.json not found on disk, using state from socket")
+              console.log("[v0] ⚠️ Warning: creds.json not found on disk, creating it")
               // Store the current state from socket as fallback
               sessionData = { creds: state.creds }
+              // Ensure directory exists and write file
+              if (!fs.existsSync(sessionDir)) {
+                fs.mkdirSync(sessionDir, { recursive: true })
+              }
+              fs.writeFileSync(credsPath, JSON.stringify(state.creds, null, 2))
+              console.log("[v0] ✅ Created creds.json from socket state")
             }
             
             // Ensure sessionData has required structure
@@ -456,9 +483,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
             console.log("[v0] ✅ Bot marked as active in database")
 
-            await delay(1000)
+            // Wait for connection to fully stabilize before sending message
+            await delay(2000)
 
-            const welcomeMsg = `✅ *Connection Successful!*\n\n📱 *Phone Number:* ${bot.phone_number}\n🤖 *Bot:* God's Zeal Xmd\n⏰ *Connected:* ${new Date().toLocaleString()}\n\n🎉 Your WhatsApp bot is now active and ready to use!\n\nThank you for using God's Zeal Xmd! 🚀`
+            const welcomeMsg = `✅ *Connection Successful!*\n\n📱 *Phone Number:* ${bot.phone_number}\n🤖 *Bot:* God's Zeal Xmd\n⏰ *Connected:* ${new Date().toLocaleString()}\n\n🎉 Your WhatsApp bot is now active!\n\n⚙️ Setting up your GitHub repository and deployment...\n\nPlease wait a moment...`
 
             await sock.sendMessage(sock.user!.id, {
               text: welcomeMsg,

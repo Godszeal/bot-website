@@ -1,3 +1,6 @@
+"use client"
+
+import React from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Calendar, Phone, Globe, Github, ExternalLink } from "lucide-react"
@@ -20,6 +23,34 @@ interface BotInfoCardProps {
 }
 
 export function BotInfoCard({ bot }: BotInfoCardProps) {
+  // Auto-refresh when bot becomes active to show repository
+  React.useEffect(() => {
+    if (bot.status === 'active' && !bot.github_repo_url) {
+      // Poll for repository updates
+      const pollInterval = setInterval(async () => {
+        try {
+          const response = await fetch(`/api/bots/${bot.id}/status`)
+          const data = await response.json()
+
+          if (data.bot?.github_repo_url) {
+            // Repository is ready, reload the page
+            clearInterval(pollInterval)
+            window.location.reload()
+          }
+        } catch (error) {
+          console.error('Error polling bot status:', error)
+        }
+      }, 3000) // Check every 3 seconds
+
+      // Stop polling after 2 minutes
+      setTimeout(() => {
+        clearInterval(pollInterval)
+      }, 120000)
+
+      return () => clearInterval(pollInterval)
+    }
+  }, [bot.status, bot.github_repo_url, bot.id])
+
   const statusColors = {
     inactive: "bg-muted text-muted-foreground",
     pairing: "bg-yellow-500/10 text-yellow-500",

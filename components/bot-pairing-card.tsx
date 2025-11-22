@@ -47,7 +47,7 @@ export function BotPairingCard({ bot: initialBot }: BotPairingCardProps) {
             // Refresh bot status
             const statusResponse = await fetch(`/api/bots/${bot.id}/status`)
             if (!statusResponse.ok) {
-              throw new Error(`Failed to fetch status after pairing: ${statusResponse.status}`)
+              throw new Error(`Failed to fetch status after pairing: ${response.status}`)
             }
             const statusData = await statusResponse.json()
             setBot(statusData.bot)
