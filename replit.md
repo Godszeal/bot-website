@@ -12,7 +12,15 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (November 22, 2025)
 
-**Repository File Auto-Regeneration System** (NEW):
+**Critical Fixes - Repository Files & Logs** (FIXED):
+- ✅ Fixed "Failed to fetch" error in logs endpoint - Added proper runtime configuration
+- ✅ Fixed repository files NOT being created - Fixed github_username fetching bug
+- ✅ Fixed credentials file timing issue - Added delay to ensure files written to disk
+- ✅ Added fallback creds from socket state if file not found
+- ✅ Enhanced error logging throughout fork and deploy process
+- ✅ Repository workflow now creates files correctly during bot connection
+
+**Repository File Auto-Regeneration System**:
 - ✅ Automatic detection of missing repository files (creds.json, workflows)
 - ✅ Auto-recreates missing files when bot connects (no manual intervention needed)
 - ✅ New endpoint: `POST /api/bots/[id]/regenerate-files` for manual regeneration

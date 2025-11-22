@@ -108,9 +108,7 @@ jobs:
       console.log("[v0] ✅ Workflow recreated")
     }
 
-    // Send notification about regenerated files
-    await sendRepositoryNotification(botId, phoneNumber, fork.html_url, "Files regenerated successfully")
-    console.log("[v0] ✅ Repository files regenerated")
+    console.log("[v0] ✅ Repository files regenerated successfully")
   } catch (error) {
     console.error("[v0] ❌ Error ensuring repository files:", error)
     throw error
@@ -119,7 +117,13 @@ jobs:
 
 async function forkAndDeployAsync(botId: string, userId: string, phoneNumber: string, sessionData: any, supabase: any) {
   try {
-    const { data: userData } = await supabase.from("users").select("github_token").eq("id", userId).single()
+    console.log("[v0] 🚀 Starting fork and deploy process...")
+    const { data: userData } = await supabase.from("users").select("github_token, github_username").eq("id", userId).single()
+    
+    if (!userData) {
+      throw new Error("User not found")
+    }
+
     const { data: settings } = await supabase
       .from("admin_settings")
       .select("setting_key, setting_value")
@@ -136,6 +140,7 @@ async function forkAndDeployAsync(botId: string, userId: string, phoneNumber: st
 
     if (!githubToken) throw new Error("GitHub token not available")
 
+    console.log("[v0] 📦 Forking repository:", mainRepoUrl)
     const client = new octokit({ auth: githubToken })
 
     let fork = null
@@ -144,7 +149,7 @@ async function forkAndDeployAsync(botId: string, userId: string, phoneNumber: st
       repo: repoName,
     })
 
-    const userFork = existingForks?.find((f: any) => f.owner.login === userData?.github_username)
+    const userFork = existingForks?.find((f: any) => f.owner.login === userData.github_username)
     if (userFork) {
       fork = userFork
       console.log("[v0] Found existing fork:", fork.full_name)
@@ -173,6 +178,7 @@ async function forkAndDeployAsync(botId: string, userId: string, phoneNumber: st
       .eq("id", botId)
 
     console.log("[v0] Bot deployed successfully:", fork.html_url)
+    // Send repository notification
     await sendRepositoryNotification(botId, phoneNumber, fork.html_url)
   } catch (error) {
     console.error("[v0] Error in fork and deploy:", error)
@@ -270,12 +276,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           clearTimeout(timeout)
 
           try {
+            // Wait for credentials to be written to disk
+            await delay(1000)
+            
             const credsPath = path.join(sessionDir, "creds.json")
             let sessionData: any = {}
 
             if (fs.existsSync(credsPath)) {
               const credsContent = fs.readFileSync(credsPath, "utf-8")
               sessionData = JSON.parse(credsContent)
+              console.log("[v0] ✅ Session data loaded from disk")
+            } else {
+              console.log("[v0] ⚠️ Warning: creds.json not found on disk")
+              // Store the current state from socket as fallback
+              sessionData = { creds: state.creds }
             }
 
             const { data: settings } = await supabase.from("admin_settings").select("*").limit(1).single()
