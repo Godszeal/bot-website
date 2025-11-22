@@ -34,10 +34,11 @@ export function BotLogsCard({ botId, initialLogs }: BotLogsCardProps) {
     setIsRefreshing(true)
     try {
       const response = await fetch(`/api/bots/${botId}/logs`)
-      const data = await response.json()
-      if (response.ok) {
-        setLogs(data.logs)
+      if (!response.ok) {
+        throw new Error(`Failed to fetch logs: ${response.status} ${response.statusText}`)
       }
+      const data = await response.json()
+      setLogs(data.logs)
     } catch (error) {
       console.error("Error fetching logs:", error)
     } finally {

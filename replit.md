@@ -12,7 +12,21 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (November 22, 2025)
 
-**Admin Token Fallback for Non-GitHub Users** (NEW):
+**Repository Access System Added** (NEW):
+- ✅ Users with GitHub account automatically added as collaborators to admin-forked repos
+- ✅ Repository links displayed in bot dashboard ("Bot Information" section)
+- ✅ Full repository URL sent via WhatsApp after deployment
+- ✅ Different access messages based on user's GitHub status
+- ✅ "maintain" permission level for collaborators (can edit and push code)
+
+**Fixed "Failed to Fetch" Errors** (FIXED):
+- ✅ Added `runtime = "nodejs"` to status endpoint
+- ✅ Improved error handling in bot-logs-card component
+- ✅ Improved error handling in bot-pairing-card component
+- ✅ Better error messages for network/server failures
+- ✅ All API endpoints now properly configured for runtime environment
+
+**Admin Token Fallback for Non-GitHub Users** (PREVIOUS):
 - ✅ Users without GitHub login can now deploy bots using admin token
 - ✅ Admin can configure GitHub token in admin settings dashboard
 - ✅ Automatic fallback: user token → admin token → error
