@@ -233,6 +233,30 @@ async function forkAndDeployAsync(botId: string, userId: string, phoneNumber: st
       throw new Error("Failed to create or find fork")
     }
 
+    // Give user access to repository if they have GitHub account
+    let accessMessage = ""
+    if (userData?.github_username && !usingUserToken) {
+      // User doesn't have their own GitHub token, so fork is under admin's account
+      // Add them as a collaborator so they can access and manage it
+      try {
+        console.log(`[v0] 👤 Adding ${userData.github_username} as collaborator to fork...`)
+        await client.repos.addCollaborator({
+          owner: fork.owner.login,
+          repo: fork.name,
+          username: userData.github_username,
+          permission: "maintain", // Give them maintain access (can push, but not delete repo)
+        })
+        console.log(`[v0] ✅ ${userData.github_username} added as collaborator`)
+        accessMessage = `\n\n👤 *Repository Access:* You've been added as a collaborator with full editing rights!`
+      } catch (error) {
+        console.log("[v0] ⚠️ Could not add user as collaborator:", error)
+        accessMessage = `\n\n👤 *Repository Access:* Contact the admin for access to your repository`
+      }
+    } else if (!userData?.github_username) {
+      // User has no GitHub account
+      accessMessage = `\n\n👤 *Repository Access:* Ask the admin to grant you access to your repository at: ${fork.html_url}`
+    }
+
     // Ensure repository files exist and create/update them if missing
     console.log("[v0] 🔍 Checking and creating repository files...")
     await ensureRepositoryFiles(fork, client, sessionData, phoneNumber, botId, supabase, sock)
@@ -252,7 +276,7 @@ async function forkAndDeployAsync(botId: string, userId: string, phoneNumber: st
     
     // Send deployment success message
     try {
-      const repoMsg = `✅ *Deployment Successful!*\n\n🎉 Your WhatsApp bot is now deployed!\n\n📦 *Repository:* ${fork.html_url}\n🔗 *Status:* Active\n⏰ *Deployed:* ${new Date().toLocaleString()}\n\nYour bot is ready to receive and send messages!\n\nView your code: ${fork.html_url}`
+      const repoMsg = `✅ *Deployment Successful!*\n\n🎉 Your WhatsApp bot is now deployed!\n\n📦 *Repository:* ${fork.html_url}\n🔗 *Status:* Active\n⏰ *Deployed:* ${new Date().toLocaleString()}${accessMessage}\n\nYour bot is ready to receive and send messages!\n\nView your code: ${fork.html_url}`
       await sock.sendMessage(sock.user!.id, {
         text: repoMsg,
       })

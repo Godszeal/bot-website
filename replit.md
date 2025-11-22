@@ -91,6 +91,53 @@ Preferred communication style: Simple, everyday language.
 - Supabase Database: https://etjiaukapkfutvgyerim.supabase.co
 - GitHub OAuth callback: https://etjiaukapkfutvgyerim.supabase.co/auth/v1/callback
 
+## Setup Instructions for Admin GitHub Token
+
+### For Users Without GitHub Login
+If a user hasn't logged in with their GitHub account, the system will automatically use the **Admin GitHub Token** to fork and deploy repositories. This allows any user to deploy bots without needing their own GitHub account.
+
+### How to Configure Admin GitHub Token
+
+**Option 1: Set via Admin Settings Dashboard** (Recommended)
+1. Login as admin user
+2. Go to `/admin/settings`
+3. Add or update the `github_token` setting with your GitHub Personal Access Token
+4. The token will be used for all users who don't have their own GitHub login
+
+**Option 2: Direct Database Insert**
+```sql
+INSERT INTO admin_settings (setting_key, setting_value)
+VALUES ('github_token', 'ghp_xxxxxxxxxxxxxxxxxxxxx')
+ON CONFLICT (setting_key) DO UPDATE SET setting_value = 'ghp_xxxxxxxxxxxxxxxxxxxxx';
+```
+
+### Repository Access System (NEW)
+
+**For Users WITH GitHub Account** (even if they didn't login with it):
+- ✅ Fork created under admin's account
+- ✅ User **automatically added as collaborator** with "maintain" access
+- ✅ User can view, edit, and push code to the repository
+- ✅ User receives confirmation in WhatsApp message that they've been added
+- ✅ Repository link displayed in bot dashboard for easy access
+
+**For Users WITHOUT GitHub Account**:
+- ✅ Fork created under admin's account  
+- ✅ Admin must manually grant user access or share the repository link
+- ✅ User receives WhatsApp message with instructions to ask admin for access
+- ✅ Repository link displayed in bot dashboard
+
+**All Users Get**:
+- ✅ Repository link in WhatsApp deployment message
+- ✅ Repository link in bot dashboard ("Bot Information" section)
+- ✅ Full GitHub repository access after deployment
+
+### Getting a GitHub Personal Access Token
+1. Go to https://github.com/settings/tokens
+2. Click "Generate new token"
+3. Select scopes: `repo`, `workflow`
+4. Copy the token and save it securely
+5. Add it to admin settings in your platform
+
 ## System Architecture
 
 ### Frontend Architecture
