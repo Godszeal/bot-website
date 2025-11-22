@@ -4,3 +4,15 @@ expertMode = true
 
 [nix]
 channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL = "https://v0.app/chat/api/supabase/redirect/vTnAVFiws3E"
+NEXT_PUBLIC_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV0amlhdWthcGtmdXR2Z3llcmltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzMTEzODgsImV4cCI6MjA3Nzg4NzM4OH0.z74WBYjO_zLkPc7KLw1rXGpp4vp7zaYTL0qzsQPWehs"
+NEXT_PUBLIC_SUPABASE_URL = "https://etjiaukapkfutvgyerim.supabase.co"
+SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV0amlhdWthcGtmdXR2Z3llcmltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzMTEzODgsImV4cCI6MjA3Nzg4NzM4OH0.z74WBYjO_zLkPc7KLw1rXGpp4vp7zaYTL0qzsQPWehs"
+SUPABASE_JWT_SECRET = "Htw/xth7bf9x0WYF4mCMb3adBJG9AkkmuaCJOCxsDJEJngokqFmhOeX4lNuJddd5ERzf9GPZ6OJFO8pqUKwR0A=="
+SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV0amlhdWthcGtmdXR2Z3llcmltIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MjMxMTM4OCwiZXhwIjoyMDc3ODg3Mzg4fQ.ge9eJpewZgeWMTYW7FfMgDdaLpZ-__BzQsRFmBOlGQE"
+SUPABASE_URL = "https://etjiaukapkfutvgyerim.supabase.co"
+NEXT_PUBLIC_SITE_URL = "https://72b066e2-ee74-4d48-9f96-af5bcb96d510-00-2c4nwcyuwkaio.picard.replit.dev"

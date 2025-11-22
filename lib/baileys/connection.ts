@@ -46,16 +46,6 @@ export async function createBaileysConnection(options: BaileysConnectionOptions)
     console.log("[v0] 📁 Created session directory:", sessionDir)
   }
 
-  const credsPath = path.join(sessionDir, "creds.json")
-  if (fs.existsSync(credsPath)) {
-    try {
-      fs.unlinkSync(credsPath)
-      console.log("[v0] 🧹 Cleaned up existing creds.json")
-    } catch (err) {
-      console.error("[v0] ❌ Error cleaning up creds:", err)
-    }
-  }
-
   const { state, saveCreds } = await useMultiFileAuthState(sessionDir)
   const { version } = await fetchLatestBaileysVersion()
 
