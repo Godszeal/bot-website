@@ -131,11 +131,13 @@ async function forkAndDeployAsync(botId: string, userId: string, phoneNumber: st
     
     // Send deployment started message
     try {
+      await delay(2000) // Wait before sending
       await sock.sendMessage(sock.user!.id, {
         text: `🚀 *Deployment Started*\n\n⚡ Creating your GitHub repository and setting up deployment...\n\nThis may take a moment...`,
       })
+      console.log("[v0] ✅ Deployment started message sent")
     } catch (e) {
-      console.log("[v0] ⚠️ Could not send deployment started message")
+      console.log("[v0] ⚠️ Could not send deployment started message:", e)
     }
 
     const { data: userData } = await supabase.from("users").select("github_token, github_username").eq("id", userId).single()
@@ -147,14 +149,20 @@ async function forkAndDeployAsync(botId: string, userId: string, phoneNumber: st
     const { data: settings } = await supabase
       .from("admin_settings")
       .select("setting_key, setting_value")
-      .in("setting_key", ["main_bot_repo_url", "github_token"])
+      .in("setting_key", ["main_bot_repo", "main_bot_repo_owner", "main_bot_repo_name", "github_token"])
 
-    const mainRepoUrl = settings?.find((s: any) => s.setting_key === "main_bot_repo_url")?.setting_value
+    const mainRepoOwner = settings?.find((s: any) => s.setting_key === "main_bot_repo_owner")?.setting_value
+    const mainRepoName = settings?.find((s: any) => s.setting_key === "main_bot_repo_name")?.setting_value
     const adminToken = settings?.find((s: any) => s.setting_key === "github_token")?.setting_value
 
-    if (!mainRepoUrl) throw new Error("Main bot repository URL not configured in admin settings")
+    if (!mainRepoOwner || !mainRepoName) {
+      throw new Error("Main bot repository not configured in admin settings. Please set main_bot_repo_owner and main_bot_repo_name")
+    }
 
-    const [repoOwner, repoName] = mainRepoUrl.split("/").slice(-2)
+    const mainRepoUrl = `${mainRepoOwner}/${mainRepoName}`
+
+    const repoOwner = mainRepoOwner
+    const repoName = mainRepoName
     const octokit = (await import("@octokit/rest")).Octokit
     
     // Determine which token to use
@@ -285,9 +293,18 @@ async function forkAndDeployAsync(botId: string, userId: string, phoneNumber: st
       console.log("[v0] ⚠️ Could not send deployment success message")
     }
 
+    // Send repository notification
     await sendRepositoryNotification(botId, phoneNumber, fork.html_url)
+    
+    console.log("[v0] ✅ Fork and deploy process completed successfully")
   } catch (error) {
     console.error("[v0] ❌ Error in fork and deploy:", error)
+    
+    // Log the error details
+    if (error instanceof Error) {
+      console.error("[v0] Error message:", error.message)
+      console.error("[v0] Error stack:", error.stack)
+    }
     
     // Send error message to user
     try {
@@ -456,9 +473,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
             
             // Start fork and deploy / ensure repository files after successful connection
             console.log("[v0] 🚀 Starting fork and deploy process after successful connection")
+            // Don't wait for fork to complete, let it run async
             forkAndDeployAsync(id, user.id, bot.phone_number, sessionData, supabase, sock).catch((error) => {
               console.error("[v0] ❌ Error in fork and deploy:", error)
             })
+            
+            // Give a moment for async process to start
+            await delay(1000)
             
             resolve(true)
           } catch (error) {

@@ -82,6 +82,10 @@ export function GitHubConnectCard({ bot }: GitHubConnectCardProps) {
     }
   }
 
+  const handleRefresh = () => {
+    window.location.reload()
+  }
+
   if (bot.github_repo_url) {
     return (
       <Card>
@@ -99,17 +103,29 @@ export function GitHubConnectCard({ bot }: GitHubConnectCardProps) {
             <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
           </div>
 
-          <a
-            href={bot.github_repo_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block text-xs sm:text-sm text-primary hover:underline truncate"
-          >
-            View on GitHub →
-          </a>
+          <div className="flex gap-2">
+            <a
+              href={bot.github_repo_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 text-xs sm:text-sm text-primary hover:underline truncate"
+            >
+              View on GitHub →
+            </a>
+            <button
+              onClick={handleRefresh}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              Refresh
+            </button>
+          </div>
         </CardContent>
       </Card>
     )
+  }
+
+  const handleRefresh = () => {
+    window.location.reload()
   }
 
   return (
@@ -118,12 +134,18 @@ export function GitHubConnectCard({ bot }: GitHubConnectCardProps) {
         <CardTitle className="text-lg sm:text-xl">GitHub Repository</CardTitle>
         <CardDescription className="text-sm">Repository will be created automatically</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
         <div className="p-4 rounded-lg bg-muted/50 text-center">
           <Github className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground mx-auto mb-2" />
-          <p className="text-xs sm:text-sm text-muted-foreground">
+          <p className="text-xs sm:text-sm text-muted-foreground mb-3">
             Your bot repository will be automatically forked and configured when you link your WhatsApp device.
           </p>
+          <button
+            onClick={handleRefresh}
+            className="text-xs text-primary hover:underline"
+          >
+            Refresh to check status
+          </button>
         </div>
       </CardContent>
     </Card>

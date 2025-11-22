@@ -15,18 +15,31 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${origin}/auth/error?message=${encodeURIComponent(error.message)}`)
     }
 
-    // Store GitHub access token if available
-    if (data.session?.provider_token) {
+    // Store GitHub access token and username if available
+    if (data.session?.provider_token && data.user) {
+      const updateData: any = { 
+        github_token: data.session.provider_token 
+      }
+      
+      // Try to get GitHub username from user metadata
+      if (data.user.user_metadata?.user_name) {
+        updateData.github_username = data.user.user_metadata.user_name
+        console.log("[v0] GitHub username:", data.user.user_metadata.user_name)
+      }
+
       const { error: updateError } = await supabase
         .from("users")
-        .update({ github_token: data.session.provider_token })
-        .eq("id", data.user?.id)
+        .update(updateData)
+        .eq("id", data.user.id)
 
       if (updateError) {
-        console.error("[v0] Error storing GitHub token:", updateError)
+        console.error("[v0] Error storing GitHub data:", updateError)
+      } else {
+        console.log("[v0] ✅ GitHub token and username stored successfully")
       }
     }
   }
 
+  // Always redirect to dashboard
   return NextResponse.redirect(`${origin}/dashboard`)
 }

@@ -223,19 +223,26 @@ export async function createBaileysConnection(options: BaileysConnectionOptions)
           console.log("[v0] 💾 Session data loaded successfully")
         }
 
-        await delay(3000)
+        // Wait for connection to stabilize
+        await delay(2000)
 
-        if (sendWelcomeMessage) {
+        if (sendWelcomeMessage && sock.user) {
           try {
             const welcomeMsg = `✅ *Connection Successful!*\n\n📱 *Phone Number:* ${phoneNumber}\n🤖 *Bot:* God's Zeal Xmd\n⏰ *Connected:* ${new Date().toLocaleString()}\n\n🎉 Your WhatsApp bot is now active!\n\n⚙️ Setting up your GitHub repository...`
 
-            await sock.sendMessage(sock.user!.id, {
+            console.log("[v0] 📤 Sending welcome message to:", sock.user.id)
+            const result = await sock.sendMessage(sock.user.id, {
               text: welcomeMsg,
             })
             console.log("[v0] ✅ Welcome message sent successfully to user's DM")
           } catch (msgError) {
             console.error("[v0] ❌ Error sending welcome message:", msgError)
+            if (msgError instanceof Error) {
+              console.error("[v0] Error details:", msgError.message)
+            }
           }
+        } else {
+          console.log("[v0] ⚠️ Skipping welcome message - sock.user not available or sendWelcomeMessage is false")
         }
 
         if (channelJid) {
@@ -325,22 +332,26 @@ export function closeConnection(botId: string) {
 export async function sendRepositoryNotification(botId: string, phoneNumber: string, repoUrl: string) {
   try {
     const connData = activeConnections.get(botId)
-    if (!connData?.sock) {
-      console.log("[v0] No active connection to send repository notification")
+    if (!connData?.sock || !connData.sock.user) {
+      console.log("[v0] No active connection or user to send repository notification")
       return
     }
 
     const { delay } = await import("@whiskeysockets/baileys")
-    await delay(2000)
+    await delay(3000)
 
     const successMsg = `✅ *GitHub Repository Created!*\n\n🔗 *Your Bot Repository:*\n${repoUrl}\n\n📦 Your WhatsApp session has been securely uploaded to your GitHub repository.\n\n🚀 *What's Next?*\n• View your bot code on GitHub\n• Check the GitHub Actions workflow\n• Your bot is ready to deploy!\n\nYou can manage everything from your dashboard.\n\nThank you for using God's Zeal Xmd! 💚`
 
-    await connData.sock.sendMessage(connData.sock.user!.id, {
+    console.log("[v0] 📤 Sending repository notification to:", connData.sock.user.id)
+    const result = await connData.sock.sendMessage(connData.sock.user.id, {
       text: successMsg,
     })
     console.log("[v0] ✅ Repository notification sent successfully")
   } catch (error) {
     console.error("[v0] ❌ Error sending repository notification:", error)
+    if (error instanceof Error) {
+      console.error("[v0] Error details:", error.message)
+    }
   }
 }
 
