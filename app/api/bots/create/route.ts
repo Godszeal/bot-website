@@ -202,14 +202,36 @@ async function forkAndDeploy(botId: string, userId: string, sessionData: any, su
 
     const octokit = new Octokit({ auth: githubToken })
 
-    console.log("[v0] Forking repository:", repoOwner, repoName)
-    const { data: fork } = await octokit.repos.createFork({
-      owner: repoOwner,
-      repo: repoName,
-    })
+    const { data: authenticatedUser } = await octokit.users.getAuthenticated()
+    const targetOwner = authenticatedUser.login
 
-    // Wait for fork to be ready
-    await new Promise((resolve) => setTimeout(resolve, 8000))
+    console.log("[v0] Checking for existing fork of", repoOwner, repoName, "for user", targetOwner)
+    
+    let fork
+    try {
+      const { data: existingFork } = await octokit.repos.get({
+        owner: targetOwner,
+        repo: repoName,
+      })
+      
+      if (existingFork && existingFork.fork && existingFork.parent?.full_name === `${repoOwner}/${repoName}`) {
+        console.log("[v0] Found existing fork:", existingFork.full_name)
+        fork = existingFork
+      } else {
+        throw new Error("Not a fork or different source")
+      }
+    } catch (error) {
+      console.log("[v0] No existing fork found, creating new fork...")
+      const { data: newFork } = await octokit.repos.createFork({
+        owner: repoOwner,
+        repo: repoName,
+      })
+      fork = newFork
+      
+      // Wait for fork to be ready
+      console.log("[v0] Waiting for fork to be ready...")
+      await new Promise((resolve) => setTimeout(resolve, 8000))
+    }
 
     const credsContent = JSON.stringify(sessionData.creds, null, 2)
 
