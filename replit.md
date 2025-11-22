@@ -10,6 +10,23 @@ The application serves as a SaaS platform where authenticated users can create m
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes (November 22, 2025)
+
+**Vercel to Replit Migration Completed**:
+- ✅ Fixed critical WhatsApp pairing bug (credentials no longer deleted on connection)
+- ✅ Added existing fork detection to prevent duplicate repository errors
+- ✅ Configured Next.js for Replit (port 5000, 0.0.0.0 binding)
+- ✅ Created comprehensive database migration script (setup_database.sql)
+- ✅ Added GitHub OAuth integration guide
+- ✅ Updated all redirect URLs for Replit environment
+- ✅ Environment variables migrated to Replit secrets
+- ✅ Fixed Next.js 16 configuration (serverExternalPackages)
+
+**Deployment Info**:
+- Platform running on Replit: https://72b066e2-ee74-4d48-9f96-af5bcb96d510-00-2c4nwcyuwkaio.picard.replit.dev
+- Supabase Database: https://etjiaukapkfutvgyerim.supabase.co
+- GitHub OAuth callback: https://etjiaukapkfutvgyerim.supabase.co/auth/v1/callback
+
 ## System Architecture
 
 ### Frontend Architecture
@@ -48,13 +65,17 @@ Preferred communication style: Simple, everyday language.
 - Connection state management with in-memory tracking
 - Keep-alive timers to maintain active connections during pairing
 - QR code fallback option for pairing
-- Session persistence for reconnection after restarts
+- Session persistence for reconnection after restarts (credentials NOT deleted on reconnect)
+- Fixed bug: Previously deleted creds.json on every connection, causing devices to disconnect
 
 **GitHub Integration** (Octokit):
-- Automated repository forking and configuration
+- Automated repository forking with existing fork detection
 - GitHub Actions workflow deployment
 - Commit management and branch operations
 - OAuth token-based authentication for API access
+- User's GitHub OAuth token used first (from login)
+- Admin token as fallback for users without GitHub connection
+- Checks for existing forks before creating new ones (prevents duplicate fork errors)
 
 ### Data Storage
 
