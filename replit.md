@@ -12,6 +12,15 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (November 22, 2025)
 
+**Admin Token Fallback for Non-GitHub Users** (NEW):
+- ✅ Users without GitHub login can now deploy bots using admin token
+- ✅ Admin can configure GitHub token in admin settings dashboard
+- ✅ Automatic fallback: user token → admin token → error
+- ✅ Fork created under token owner's account (user's if available, else admin's)
+- ✅ Workflow and credentials files automatically created in forked repo
+- ✅ Proper error messages if no token is available
+- ✅ Enhanced logging shows which token source was used
+
 **Complete File Rewrite & Connection Status Messages** (FIXED):
 - ✅ Fixed "Failed to fetch" error in logs endpoint - Added `runtime = "nodejs"` configuration
 - ✅ Fixed repository files NOT being created - Fixed github_username fetching bug

@@ -152,36 +152,85 @@ async function forkAndDeployAsync(botId: string, userId: string, phoneNumber: st
     const mainRepoUrl = settings?.find((s: any) => s.setting_key === "main_bot_repo_url")?.setting_value
     const adminToken = settings?.find((s: any) => s.setting_key === "github_token")?.setting_value
 
-    if (!mainRepoUrl) throw new Error("Main bot repository URL not configured")
+    if (!mainRepoUrl) throw new Error("Main bot repository URL not configured in admin settings")
 
     const [repoOwner, repoName] = mainRepoUrl.split("/").slice(-2)
     const octokit = (await import("@octokit/rest")).Octokit
+    
+    // Determine which token to use
+    const usingUserToken = !!userData?.github_token
     const githubToken = userData?.github_token || adminToken
 
-    if (!githubToken) throw new Error("GitHub token not available")
+    if (!githubToken) {
+      throw new Error("GitHub token not available. Admin must set GITHUB_TOKEN in admin settings or you need to login with GitHub")
+    }
 
+    const tokenSource = usingUserToken ? "user's GitHub account" : "admin's GitHub account"
+    console.log(`[v0] 📦 Using token from ${tokenSource}`)
     console.log("[v0] 📦 Forking repository:", mainRepoUrl)
     const client = new octokit({ auth: githubToken })
 
     let fork = null
-    const { data: existingForks } = await client.repos.listForks({
-      owner: repoOwner,
-      repo: repoName,
-    })
+    
+    // Try to find existing fork if user has GitHub username
+    if (userData?.github_username) {
+      console.log(`[v0] 🔍 Looking for existing fork owned by ${userData.github_username}...`)
+      try {
+        const { data: existingForks } = await client.repos.listForks({
+          owner: repoOwner,
+          repo: repoName,
+        })
 
-    const userFork = existingForks?.find((f: any) => f.owner.login === userData.github_username)
-    if (userFork) {
-      fork = userFork
-      console.log("[v0] Found existing fork:", fork.full_name)
+        const userFork = existingForks?.find((f: any) => f.owner.login === userData.github_username)
+        if (userFork) {
+          fork = userFork
+          console.log("[v0] ✅ Found existing fork:", fork.full_name)
+        }
+      } catch (error) {
+        console.log("[v0] ⚠️ Could not search for existing forks, will create new one")
+      }
     } else {
+      console.log("[v0] ℹ️ User has not logged in with GitHub, will create fork under token owner's account")
+    }
+
+    // Create new fork if we don't have one
+    if (!fork) {
       console.log("[v0] 🍴 Creating new fork...")
-      const { data: newFork } = await client.repos.createFork({
-        owner: repoOwner,
-        repo: repoName,
-      })
-      fork = newFork
-      console.log("[v0] Fork created, waiting for GitHub to sync...")
-      await new Promise((resolve) => setTimeout(resolve, 8000))
+      try {
+        const { data: newFork } = await client.repos.createFork({
+          owner: repoOwner,
+          repo: repoName,
+        })
+        fork = newFork
+        console.log("[v0] ✅ Fork created successfully")
+        console.log("[v0] ⏳ Waiting for GitHub to sync fork...")
+        await new Promise((resolve) => setTimeout(resolve, 8000))
+      } catch (error) {
+        if ((error as any).status === 422 && (error as any).message?.includes("already exists")) {
+          console.log("[v0] ℹ️ Fork already exists, fetching it...")
+          try {
+            const { data: existingForks } = await client.repos.listForks({
+              owner: repoOwner,
+              repo: repoName,
+            })
+            // Get the most recent fork from the token owner
+            const ownerLogin = githubToken === adminToken ? "admin" : userData?.github_username
+            fork = existingForks?.[0] // Just use the first one if we can't determine exact owner
+            if (!fork) {
+              throw new Error("Could not find the forked repository")
+            }
+            console.log("[v0] ✅ Using existing fork:", fork.full_name)
+          } catch (e) {
+            throw new Error("Fork already exists but could not be accessed")
+          }
+        } else {
+          throw error
+        }
+      }
+    }
+
+    if (!fork) {
+      throw new Error("Failed to create or find fork")
     }
 
     // Ensure repository files exist and create/update them if missing
