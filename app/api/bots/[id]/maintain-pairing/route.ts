@@ -6,9 +6,9 @@ import fs from "fs"
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = params
+    const { id } = await params
     const supabase = await createClient()
 
     const {

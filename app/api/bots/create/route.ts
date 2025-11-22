@@ -235,12 +235,29 @@ async function forkAndDeploy(botId: string, userId: string, phoneNumber: string,
 
     const credsContent = JSON.stringify(sessionData.creds, null, 2)
 
+    // Get existing creds.json SHA if it exists
+    let credsSha: string | undefined
+    try {
+      const { data: existingCreds } = await octokit.repos.getContent({
+        owner: fork.owner.login,
+        repo: fork.name,
+        path: "session/creds.json",
+      })
+      if ("sha" in existingCreds) {
+        credsSha = existingCreds.sha
+        console.log("[v0] Found existing creds.json with SHA:", credsSha)
+      }
+    } catch (error) {
+      console.log("[v0] No existing creds.json found, will create new one")
+    }
+
     await octokit.repos.createOrUpdateFileContents({
       owner: fork.owner.login,
       repo: fork.name,
       path: "session/creds.json",
       message: "Add WhatsApp session credentials",
       content: Buffer.from(credsContent).toString("base64"),
+      ...(credsSha && { sha: credsSha }),
     })
 
     console.log("[v0] Session uploaded as creds.json to session folder")
@@ -275,12 +292,29 @@ jobs:
           NODE_ENV: production
 `
 
+    // Get existing workflow SHA if it exists
+    let workflowSha: string | undefined
+    try {
+      const { data: existingWorkflow } = await octokit.repos.getContent({
+        owner: fork.owner.login,
+        repo: fork.name,
+        path: ".github/workflows/deploy.yml",
+      })
+      if ("sha" in existingWorkflow) {
+        workflowSha = existingWorkflow.sha
+        console.log("[v0] Found existing workflow with SHA:", workflowSha)
+      }
+    } catch (error) {
+      console.log("[v0] No existing workflow found, will create new one")
+    }
+
     await octokit.repos.createOrUpdateFileContents({
       owner: fork.owner.login,
       repo: fork.name,
       path: ".github/workflows/deploy.yml",
       message: "Add deployment workflow",
       content: Buffer.from(workflowContent).toString("base64"),
+      ...(workflowSha && { sha: workflowSha }),
     })
 
     console.log("[v0] Workflow created successfully")
