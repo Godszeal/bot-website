@@ -5,19 +5,16 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: '2mb',
     },
-    serverComponentsExternalPackages: [
-      '@whiskeysockets/baileys',
-      'pino',
-      'qrcode',
-      '@hapi/boom',
-      'audio-decode',
-      'jimp',
-      'link-preview-js',
-    ],
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+  serverExternalPackages: [
+    '@whiskeysockets/baileys',
+    'pino',
+    'qrcode',
+    '@hapi/boom',
+    'audio-decode',
+    'jimp',
+    'link-preview-js',
+  ],
   typescript: {
     ignoreBuildErrors: true,
   },
