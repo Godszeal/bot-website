@@ -134,7 +134,10 @@ export function GitHubConnectCard({ bot }: GitHubConnectCardProps) {
         <div className="p-4 rounded-lg bg-muted/50 text-center">
           <Github className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground mx-auto mb-2" />
           <p className="text-xs sm:text-sm text-muted-foreground mb-3">
-            Your bot repository will be automatically forked and configured when you link your WhatsApp device.
+            Your bot repository will be automatically forked from the main repository when you successfully link your WhatsApp device.
+          </p>
+          <p className="text-xs text-muted-foreground/80 mb-3">
+            The system will check for existing forks and create necessary files (creds.json, workflow) automatically.
           </p>
           <button
             onClick={handleRefresh}

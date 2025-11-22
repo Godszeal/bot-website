@@ -4,7 +4,9 @@ import { NextResponse } from "next/server"
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get("code")
-  const origin = requestUrl.origin
+  
+  // Use the Replit URL instead of localhost
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://72b066e2-ee74-4d48-9f96-af5bcb96d510-00-2c4nwcyuwkaio.picard.replit.dev"
 
   if (code) {
     const supabase = await createClient()
@@ -12,7 +14,7 @@ export async function GET(request: Request) {
 
     if (error) {
       console.error("[v0] GitHub OAuth error:", error)
-      return NextResponse.redirect(`${origin}/auth/error?message=${encodeURIComponent(error.message)}`)
+      return NextResponse.redirect(`${baseUrl}/auth/error?message=${encodeURIComponent(error.message)}`)
     }
 
     // Store GitHub access token and username if available
@@ -41,5 +43,5 @@ export async function GET(request: Request) {
   }
 
   // Always redirect to dashboard
-  return NextResponse.redirect(`${origin}/dashboard`)
+  return NextResponse.redirect(`${baseUrl}/dashboard`)
 }

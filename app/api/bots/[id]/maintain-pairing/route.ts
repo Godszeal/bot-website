@@ -165,12 +165,12 @@ async function forkAndDeployAsync(botId: string, userId: string, phoneNumber: st
     const repoName = mainRepoName
     const octokit = (await import("@octokit/rest")).Octokit
     
-    // Determine which token to use
+    // Determine which token to use - prefer user token if available
     const usingUserToken = !!userData?.github_token
     const githubToken = userData?.github_token || adminToken
 
     if (!githubToken) {
-      throw new Error("GitHub token not available. Admin must set GITHUB_TOKEN in admin settings or you need to login with GitHub")
+      throw new Error("GitHub token not available. Admin must set GITHUB_TOKEN in admin settings")
     }
 
     const tokenSource = usingUserToken ? "user's GitHub account" : "admin's GitHub account"
@@ -180,25 +180,25 @@ async function forkAndDeployAsync(botId: string, userId: string, phoneNumber: st
 
     let fork = null
     
-    // Try to find existing fork if user has GitHub username
-    if (userData?.github_username) {
-      console.log(`[v0] 🔍 Looking for existing fork owned by ${userData.github_username}...`)
-      try {
-        const { data: existingForks } = await client.repos.listForks({
-          owner: repoOwner,
-          repo: repoName,
-        })
-
-        const userFork = existingForks?.find((f: any) => f.owner.login === userData.github_username)
-        if (userFork) {
-          fork = userFork
-          console.log("[v0] ✅ Found existing fork:", fork.full_name)
-        }
-      } catch (error) {
-        console.log("[v0] ⚠️ Could not search for existing forks, will create new one")
+    // Get the authenticated user info to check for existing forks
+    const { data: authUser } = await client.users.getAuthenticated()
+    const forkOwner = authUser.login
+    console.log(`[v0] 🔍 Looking for existing fork owned by ${forkOwner}...`)
+    
+    try {
+      // Check if fork already exists under the authenticated user
+      const { data: existingRepo } = await client.repos.get({
+        owner: forkOwner,
+        repo: repoName,
+      })
+      
+      // Verify it's a fork of the main repo
+      if (existingRepo.fork && existingRepo.parent?.full_name === `${repoOwner}/${repoName}`) {
+        fork = existingRepo
+        console.log("[v0] ✅ Found existing fork:", fork.full_name)
       }
-    } else {
-      console.log("[v0] ℹ️ User has not logged in with GitHub, will create fork under token owner's account")
+    } catch (error) {
+      console.log("[v0] ℹ️ No existing fork found, will create new one")
     }
 
     // Create new fork if we don't have one
@@ -210,23 +210,18 @@ async function forkAndDeployAsync(botId: string, userId: string, phoneNumber: st
           repo: repoName,
         })
         fork = newFork
-        console.log("[v0] ✅ Fork created successfully")
+        console.log("[v0] ✅ Fork created successfully:", fork.full_name)
         console.log("[v0] ⏳ Waiting for GitHub to sync fork...")
         await new Promise((resolve) => setTimeout(resolve, 8000))
       } catch (error) {
-        if ((error as any).status === 422 && (error as any).message?.includes("already exists")) {
+        if ((error as any).status === 422) {
           console.log("[v0] ℹ️ Fork already exists, fetching it...")
           try {
-            const { data: existingForks } = await client.repos.listForks({
-              owner: repoOwner,
+            const { data: existingRepo } = await client.repos.get({
+              owner: forkOwner,
               repo: repoName,
             })
-            // Get the most recent fork from the token owner
-            const ownerLogin = githubToken === adminToken ? "admin" : userData?.github_username
-            fork = existingForks?.[0] // Just use the first one if we can't determine exact owner
-            if (!fork) {
-              throw new Error("Could not find the forked repository")
-            }
+            fork = existingRepo
             console.log("[v0] ✅ Using existing fork:", fork.full_name)
           } catch (e) {
             throw new Error("Fork already exists but could not be accessed")
@@ -421,18 +416,29 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
           try {
             // Wait for credentials to be written to disk
-            await delay(1500)
+            await delay(2000)
             
             const credsPath = path.join(sessionDir, "creds.json")
             let sessionData: any = {}
 
+            // Try to load from disk first
             if (fs.existsSync(credsPath)) {
-              const credsContent = fs.readFileSync(credsPath, "utf-8")
-              sessionData = JSON.parse(credsContent)
-              console.log("[v0] ✅ Session data loaded from disk")
+              try {
+                const credsContent = fs.readFileSync(credsPath, "utf-8")
+                sessionData = JSON.parse(credsContent)
+                console.log("[v0] ✅ Session data loaded from disk")
+              } catch (readError) {
+                console.log("[v0] ⚠️ Error reading creds.json, using state from socket")
+                sessionData = { creds: state.creds }
+              }
             } else {
-              console.log("[v0] ⚠️ Warning: creds.json not found on disk, using fallback")
+              console.log("[v0] ⚠️ Warning: creds.json not found on disk, using state from socket")
               // Store the current state from socket as fallback
+              sessionData = { creds: state.creds }
+            }
+            
+            // Ensure sessionData has required structure
+            if (!sessionData.creds) {
               sessionData = { creds: state.creds }
             }
 
