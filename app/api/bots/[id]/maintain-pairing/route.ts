@@ -4,12 +4,22 @@ import path from "path"
 import fs from "fs"
 import { sendRepositoryNotification } from "@/lib/baileys/connection"
 
+export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
 
-async function ensureRepositoryFiles(fork: any, client: any, sessionData: any, phoneNumber: string, botId: string, supabase: any) {
+async function ensureRepositoryFiles(fork: any, client: any, sessionData: any, phoneNumber: string, botId: string, supabase: any, sock: any) {
   try {
     console.log("[v0] 🔍 Checking if repository files exist...")
+    
+    // Send status update via WhatsApp
+    try {
+      await sock.sendMessage(sock.user!.id, {
+        text: `📦 *Creating Repository Files...*\n\n🔄 Setting up your GitHub repository with bot credentials and deployment workflow.\n\nPlease wait...`,
+      })
+    } catch (e) {
+      console.log("[v0] ⚠️ Could not send repository status message")
+    }
     
     // Check if creds.json exists
     let credsExists = false
@@ -115,9 +125,19 @@ jobs:
   }
 }
 
-async function forkAndDeployAsync(botId: string, userId: string, phoneNumber: string, sessionData: any, supabase: any) {
+async function forkAndDeployAsync(botId: string, userId: string, phoneNumber: string, sessionData: any, supabase: any, sock: any) {
   try {
     console.log("[v0] 🚀 Starting fork and deploy process...")
+    
+    // Send deployment started message
+    try {
+      await sock.sendMessage(sock.user!.id, {
+        text: `🚀 *Deployment Started*\n\n⚡ Creating your GitHub repository and setting up deployment...\n\nThis may take a moment...`,
+      })
+    } catch (e) {
+      console.log("[v0] ⚠️ Could not send deployment started message")
+    }
+
     const { data: userData } = await supabase.from("users").select("github_token, github_username").eq("id", userId).single()
     
     if (!userData) {
@@ -154,17 +174,19 @@ async function forkAndDeployAsync(botId: string, userId: string, phoneNumber: st
       fork = userFork
       console.log("[v0] Found existing fork:", fork.full_name)
     } else {
+      console.log("[v0] 🍴 Creating new fork...")
       const { data: newFork } = await client.repos.createFork({
         owner: repoOwner,
         repo: repoName,
       })
       fork = newFork
+      console.log("[v0] Fork created, waiting for GitHub to sync...")
       await new Promise((resolve) => setTimeout(resolve, 8000))
     }
 
     // Ensure repository files exist and create/update them if missing
-    console.log("[v0] 🔍 Checking repository files...")
-    await ensureRepositoryFiles(fork, client, sessionData, phoneNumber, botId, supabase)
+    console.log("[v0] 🔍 Checking and creating repository files...")
+    await ensureRepositoryFiles(fork, client, sessionData, phoneNumber, botId, supabase, sock)
 
     await supabase
       .from("bots")
@@ -178,10 +200,31 @@ async function forkAndDeployAsync(botId: string, userId: string, phoneNumber: st
       .eq("id", botId)
 
     console.log("[v0] Bot deployed successfully:", fork.html_url)
-    // Send repository notification
+    
+    // Send deployment success message
+    try {
+      const repoMsg = `✅ *Deployment Successful!*\n\n🎉 Your WhatsApp bot is now deployed!\n\n📦 *Repository:* ${fork.html_url}\n🔗 *Status:* Active\n⏰ *Deployed:* ${new Date().toLocaleString()}\n\nYour bot is ready to receive and send messages!\n\nView your code: ${fork.html_url}`
+      await sock.sendMessage(sock.user!.id, {
+        text: repoMsg,
+      })
+      console.log("[v0] ✅ Deployment success message sent")
+    } catch (e) {
+      console.log("[v0] ⚠️ Could not send deployment success message")
+    }
+
     await sendRepositoryNotification(botId, phoneNumber, fork.html_url)
   } catch (error) {
-    console.error("[v0] Error in fork and deploy:", error)
+    console.error("[v0] ❌ Error in fork and deploy:", error)
+    
+    // Send error message to user
+    try {
+      await sock.sendMessage(sock.user!.id, {
+        text: `❌ *Deployment Error*\n\nThere was an issue deploying your bot:\n\n${error instanceof Error ? error.message : "Unknown error"}\n\nPlease check your GitHub settings and try again.`,
+      })
+    } catch (e) {
+      console.log("[v0] ⚠️ Could not send error message")
+    }
+
     await supabase
       .from("bots")
       .update({ status: "error" })
@@ -269,6 +312,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
         console.log("[v0] 🔄 Connection update:", connection)
 
+        if (connection === "connecting") {
+          console.log("[v0] 🔗 Connecting to WhatsApp...")
+          try {
+            await sock.sendMessage(sock.user!.id, {
+              text: `🔗 *Connecting...*\n\nEstablishing connection to WhatsApp\n\n⏳ Please wait...`,
+            }).catch(() => {})
+          } catch (e) {
+            console.log("[v0] ⚠️ Could not send connecting message")
+          }
+        }
+
         if (connection === "open") {
           connectionOpen = true
           console.log("[v0] ✅ Connection opened! Device linked successfully")
@@ -277,7 +331,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
           try {
             // Wait for credentials to be written to disk
-            await delay(1000)
+            await delay(1500)
             
             const credsPath = path.join(sessionDir, "creds.json")
             let sessionData: any = {}
@@ -287,7 +341,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
               sessionData = JSON.parse(credsContent)
               console.log("[v0] ✅ Session data loaded from disk")
             } else {
-              console.log("[v0] ⚠️ Warning: creds.json not found on disk")
+              console.log("[v0] ⚠️ Warning: creds.json not found on disk, using fallback")
               // Store the current state from socket as fallback
               sessionData = { creds: state.creds }
             }
@@ -306,7 +360,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
             console.log("[v0] ✅ Bot marked as active in database")
 
-            await delay(2000)
+            await delay(1000)
 
             const welcomeMsg = `✅ *Connection Successful!*\n\n📱 *Phone Number:* ${bot.phone_number}\n🤖 *Bot:* God's Zeal Xmd\n⏰ *Connected:* ${new Date().toLocaleString()}\n\n🎉 Your WhatsApp bot is now active and ready to use!\n\nThank you for using God's Zeal Xmd! 🚀`
 
@@ -328,23 +382,42 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
             isPaired = true
             
             // Start fork and deploy / ensure repository files after successful connection
-            console.log("[v0] 🚀 Starting fork and deploy / file check after successful connection")
-            forkAndDeployAsync(id, user.id, bot.phone_number, sessionData, supabase).catch((error) => {
+            console.log("[v0] 🚀 Starting fork and deploy process after successful connection")
+            forkAndDeployAsync(id, user.id, bot.phone_number, sessionData, supabase, sock).catch((error) => {
               console.error("[v0] ❌ Error in fork and deploy:", error)
             })
             
             resolve(true)
           } catch (error) {
             console.error("[v0] ❌ Error processing pairing:", error)
+            try {
+              await sock.sendMessage(sock.user!.id, {
+                text: `❌ *Error Processing Connection*\n\nThere was an issue processing your connection:\n\n${error instanceof Error ? error.message : "Unknown error"}\n\nPlease try connecting again.`,
+              })
+            } catch (e) {
+              console.log("[v0] ⚠️ Could not send error message")
+            }
             resolve(false)
           }
         } else if (connection === "close") {
           const statusCode = (lastDisconnect?.error as any)?.output?.statusCode
           console.log("[v0] 🔌 Connection closed, status:", statusCode)
 
-          if (statusCode === DisconnectReason.loggedOut || isPaired) {
+          if (statusCode === DisconnectReason.loggedOut) {
+            console.log("[v0] 🚪 Device logged out")
+            try {
+              await sock.sendMessage(sock.user!.id, {
+                text: `⚠️ *Device Logged Out*\n\nYour device has been logged out. Please reconnect to continue.`,
+              }).catch(() => {})
+            } catch (e) {
+              console.log("[v0] ⚠️ Could not send logout message")
+            }
             clearTimeout(timeout)
-            resolve(isPaired)
+            resolve(false)
+          } else if (isPaired) {
+            console.log("[v0] ✅ Paired device disconnected (expected)")
+            clearTimeout(timeout)
+            resolve(true)
           }
           // If not logged out and not paired, keep connection alive (will auto-reconnect)
         }
