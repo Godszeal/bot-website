@@ -12,6 +12,14 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (November 22, 2025)
 
+**Repository File Auto-Regeneration System** (NEW):
+- ✅ Automatic detection of missing repository files (creds.json, workflows)
+- ✅ Auto-recreates missing files when bot connects (no manual intervention needed)
+- ✅ New endpoint: `POST /api/bots/[id]/regenerate-files` for manual regeneration
+- ✅ Users can delete all repository files and they'll be automatically recreated
+- ✅ Works for both new bots and existing deployed bots
+- ✅ Prevents "files not found" errors
+
 **Bot Deletion & Cleanup Enhanced**:
 - ✅ Graceful disconnect of active Baileys connections when bot is deleted
 - ✅ All running workflows/timers stopped (keep-alive, pairing timers)

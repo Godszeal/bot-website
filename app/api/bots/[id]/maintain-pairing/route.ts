@@ -7,6 +7,116 @@ import { sendRepositoryNotification } from "@/lib/baileys/connection"
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
 
+async function ensureRepositoryFiles(fork: any, client: any, sessionData: any, phoneNumber: string, botId: string, supabase: any) {
+  try {
+    console.log("[v0] 🔍 Checking if repository files exist...")
+    
+    // Check if creds.json exists
+    let credsExists = false
+    let credsSha: string | undefined
+    try {
+      const { data: existingCreds } = await client.repos.getContent({
+        owner: fork.owner.login,
+        repo: fork.name,
+        path: "session/creds.json",
+      })
+      if ("sha" in existingCreds) {
+        credsExists = true
+        credsSha = existingCreds.sha
+        console.log("[v0] ✅ creds.json already exists")
+      }
+    } catch (error) {
+      console.log("[v0] ⚠️ creds.json not found, will create it")
+    }
+
+    // Check if workflow exists
+    let workflowExists = false
+    let workflowSha: string | undefined
+    try {
+      const { data: existingWorkflow } = await client.repos.getContent({
+        owner: fork.owner.login,
+        repo: fork.name,
+        path: ".github/workflows/deploy.yml",
+      })
+      if ("sha" in existingWorkflow) {
+        workflowExists = true
+        workflowSha = existingWorkflow.sha
+        console.log("[v0] ✅ Workflow already exists")
+      }
+    } catch (error) {
+      console.log("[v0] ⚠️ Workflow not found, will create it")
+    }
+
+    // If both files exist, no need to do anything
+    if (credsExists && workflowExists) {
+      console.log("[v0] ✅ All repository files present")
+      return
+    }
+
+    console.log("[v0] 🔄 Recreating missing repository files...")
+
+    // Recreate creds.json if missing
+    if (!credsExists) {
+      const credsContent = JSON.stringify(sessionData.creds || sessionData, null, 2)
+      await client.repos.createOrUpdateFileContents({
+        owner: fork.owner.login,
+        repo: fork.name,
+        path: "session/creds.json",
+        message: "Regenerate WhatsApp session credentials",
+        content: Buffer.from(credsContent).toString("base64"),
+      })
+      console.log("[v0] ✅ creds.json recreated")
+    }
+
+    // Recreate workflow if missing
+    if (!workflowExists) {
+      const workflowContent = `name: Deploy WhatsApp Bot
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Start bot
+        run: npm start
+        env:
+          NODE_ENV: production
+`
+      await client.repos.createOrUpdateFileContents({
+        owner: fork.owner.login,
+        repo: fork.name,
+        path: ".github/workflows/deploy.yml",
+        message: "Regenerate deployment workflow",
+        content: Buffer.from(workflowContent).toString("base64"),
+      })
+      console.log("[v0] ✅ Workflow recreated")
+    }
+
+    // Send notification about regenerated files
+    await sendRepositoryNotification(botId, phoneNumber, fork.html_url, "Files regenerated successfully")
+    console.log("[v0] ✅ Repository files regenerated")
+  } catch (error) {
+    console.error("[v0] ❌ Error ensuring repository files:", error)
+    throw error
+  }
+}
+
 async function forkAndDeployAsync(botId: string, userId: string, phoneNumber: string, sessionData: any, supabase: any) {
   try {
     const { data: userData } = await supabase.from("users").select("github_token").eq("id", userId).single()
@@ -47,82 +157,9 @@ async function forkAndDeployAsync(botId: string, userId: string, phoneNumber: st
       await new Promise((resolve) => setTimeout(resolve, 8000))
     }
 
-    const credsContent = JSON.stringify(sessionData.creds, null, 2)
-
-    let credsSha: string | undefined
-    try {
-      const { data: existingCreds } = await client.repos.getContent({
-        owner: fork.owner.login,
-        repo: fork.name,
-        path: "session/creds.json",
-      })
-      if ("sha" in existingCreds) {
-        credsSha = existingCreds.sha
-      }
-    } catch (error) {
-      console.log("[v0] No existing creds.json found")
-    }
-
-    await client.repos.createOrUpdateFileContents({
-      owner: fork.owner.login,
-      repo: fork.name,
-      path: "session/creds.json",
-      message: "Add WhatsApp session credentials",
-      content: Buffer.from(credsContent).toString("base64"),
-      ...(credsSha && { sha: credsSha }),
-    })
-
-    const workflowContent = `name: Deploy WhatsApp Bot
-
-on:
-  push:
-    branches: [ main, master ]
-  workflow_dispatch:
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      
-      - name: Install dependencies
-        run: npm install
-      
-      - name: Start bot
-        run: npm start
-        env:
-          NODE_ENV: production
-`
-
-    let workflowSha: string | undefined
-    try {
-      const { data: existingWorkflow } = await client.repos.getContent({
-        owner: fork.owner.login,
-        repo: fork.name,
-        path: ".github/workflows/deploy.yml",
-      })
-      if ("sha" in existingWorkflow) {
-        workflowSha = existingWorkflow.sha
-      }
-    } catch (error) {
-      console.log("[v0] No existing workflow found")
-    }
-
-    await client.repos.createOrUpdateFileContents({
-      owner: fork.owner.login,
-      repo: fork.name,
-      path: ".github/workflows/deploy.yml",
-      message: "Add deployment workflow",
-      content: Buffer.from(workflowContent).toString("base64"),
-      ...(workflowSha && { sha: workflowSha }),
-    })
+    // Ensure repository files exist and create/update them if missing
+    console.log("[v0] 🔍 Checking repository files...")
+    await ensureRepositoryFiles(fork, client, sessionData, phoneNumber, botId, supabase)
 
     await supabase
       .from("bots")
@@ -276,8 +313,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
             isPaired = true
             
-            // Start fork and deploy after successful pairing
-            console.log("[v0] 🚀 Starting fork and deploy after successful pairing")
+            // Start fork and deploy / ensure repository files after successful connection
+            console.log("[v0] 🚀 Starting fork and deploy / file check after successful connection")
             forkAndDeployAsync(id, user.id, bot.phone_number, sessionData, supabase).catch((error) => {
               console.error("[v0] ❌ Error in fork and deploy:", error)
             })
