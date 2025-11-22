@@ -16,3 +16,36 @@ SUPABASE_JWT_SECRET = "Htw/xth7bf9x0WYF4mCMb3adBJG9AkkmuaCJOCxsDJEJngokqFmhOeX4l
 SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV0amlhdWthcGtmdXR2Z3llcmltIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MjMxMTM4OCwiZXhwIjoyMDc3ODg3Mzg4fQ.ge9eJpewZgeWMTYW7FfMgDdaLpZ-__BzQsRFmBOlGQE"
 SUPABASE_URL = "https://etjiaukapkfutvgyerim.supabase.co"
 NEXT_PUBLIC_SITE_URL = "https://72b066e2-ee74-4d48-9f96-af5bcb96d510-00-2c4nwcyuwkaio.picard.replit.dev"
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Next.js Dev Server"
+
+[[workflows.workflow]]
+name = "Next.js Dev Server"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[deployment]
+deploymentTarget = "autoscale"
+run = ["npm"]
+build = ["npm", "run", "build"]
