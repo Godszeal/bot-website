@@ -22,6 +22,17 @@ Preferred communication style: Simple, everyday language.
 - ✅ Environment variables migrated to Replit secrets
 - ✅ Fixed Next.js 16 configuration (serverExternalPackages)
 
+**Hydration & Workflow Fixes**:
+- ✅ Fixed hydration mismatches (date formatting in timestamps)
+- ✅ Fixed GitHub Actions workflow (removed npm cache requirement for package-lock.json)
+- ✅ Fixed Radix UI button ID mismatches with suppressHydrationWarning
+- ✅ All console errors resolved
+
+**New Features Added**:
+- ✅ Bot deletion endpoint (`DELETE /api/bots/[id]/delete`) - removes bot and its session files
+- ✅ Resend connection message endpoint (`POST /api/bots/[id]/resend-connection-message`) - allows users to resend WhatsApp connection confirmations
+- ✅ Proper session cleanup when bots are deleted
+
 **Deployment Info**:
 - Platform running on Replit: https://72b066e2-ee74-4d48-9f96-af5bcb96d510-00-2c4nwcyuwkaio.picard.replit.dev
 - Supabase Database: https://etjiaukapkfutvgyerim.supabase.co

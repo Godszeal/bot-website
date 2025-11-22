@@ -77,7 +77,7 @@ export function BotLogsCard({ botId, initialLogs }: BotLogsCardProps) {
                   <Badge variant="secondary" className={levelColors[log.level as keyof typeof levelColors]}>
                     {log.level}
                   </Badge>
-                  <span className="text-xs text-muted-foreground">{new Date(log.created_at).toLocaleTimeString()}</span>
+                  <span className="text-xs text-muted-foreground" suppressHydrationWarning>{new Date(log.created_at).toLocaleTimeString()}</span>
                 </div>
                 <p className="text-foreground">{log.message}</p>
                 {log.metadata && Object.keys(log.metadata).length > 0 && (

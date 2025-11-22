@@ -1,0 +1,62 @@
+## Error Type
+Recoverable Error
+
+## Error Message
+Hydration failed because the server rendered text didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <SegmentViewNode type="page" pagePath="dashboard/...">
+      <SegmentTrieNode>
+      <BotDetailPage>
+        <div className="min-h-scre...">
+          <DashboardHeader>
+          <main className="container ...">
+            <div>
+            <div className="grid lg:gr...">
+              <div>
+              <div className="space-y-6">
+                <BotPairingCard>
+                <BotLogsCard botId="3af78d40-e..." initialLogs={[...]}>
+                  <Card>
+                    <div data-slot="card" className="bg-card te...">
+                      <CardHeader>
+                      <CardContent>
+                        <div data-slot="card-content" className="px-6">
+                          <div className="space-y-2 ...">
+                            <div className="p-3 rounde...">
+                              <div className="flex items...">
+                                <Badge>
+                                <span className="text-xs text-muted-foreground">
++                                 10:27:35 PM
+-                                 9:27:35 PM
+                              ...
+    ...
+
+
+
+    at span (<anonymous>:null:null)
+    at <unknown> (components/bot-logs-card.tsx:80:19)
+    at Array.map (<anonymous>:null:null)
+    at BotLogsCard (components/bot-logs-card.tsx:74:18)
+    at BotDetailPage (app/dashboard/bots/[id]/page.tsx:66:13)
+
+## Code Frame
+  78 |                     {log.level}
+  79 |                   </Badge>
+> 80 |                   <span className="text-xs text-muted-foreground">{new Date(log.created_at).toLocaleTimeString()}</span>
+     |                   ^
+  81 |                 </div>
+  82 |                 <p className="text-foreground">{log.message}</p>
+  83 |                 {log.metadata && Object.keys(log.metadata).length > 0 && (
+
+Next.js version: 16.0.0 (Turbopack)
