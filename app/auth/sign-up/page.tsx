@@ -59,16 +59,10 @@ export default function SignUpPage() {
     setError(null)
 
     try {
-      // Use deployment URL for redirect, fallback to window.location.origin for local dev
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
-      const redirectUrl = `${siteUrl}/auth/callback`
-      
-      console.log("[v0] GitHub OAuth redirect URL:", redirectUrl)
-      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "github",
         options: {
-          redirectTo: redirectUrl,
+          redirectTo: `${window.location.origin}/auth/callback`,
           scopes: "repo workflow",
         },
       })

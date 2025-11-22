@@ -38,23 +38,21 @@ export function BotPairingCard({ bot: initialBot }: BotPairingCardProps) {
             method: "POST",
           })
 
-          if (!response.ok) {
-            throw new Error(`Failed to maintain pairing: ${response.status} ${response.statusText}`)
-          }
-          const data = await response.json()
-          if (data.isPaired) {
-            console.log("[v0] ✅ Pairing completed via maintained connection!")
-            // Refresh bot status
-            const statusResponse = await fetch(`/api/bots/${bot.id}/status`)
-            if (!statusResponse.ok) {
-              throw new Error(`Failed to fetch status after pairing: ${response.status}`)
+          if (response.ok) {
+            const data = await response.json()
+            if (data.isPaired) {
+              console.log("[v0] ✅ Pairing completed via maintained connection!")
+              // Refresh bot status
+              const statusResponse = await fetch(`/api/bots/${bot.id}/status`)
+              if (statusResponse.ok) {
+                const statusData = await statusResponse.json()
+                setBot(statusData.bot)
+              }
+            } else {
+              // Connection timed out, try again
+              console.log("[v0] 🔄 Pairing connection timed out, restarting...")
+              setTimeout(maintainConnection, 2000)
             }
-            const statusData = await statusResponse.json()
-            setBot(statusData.bot)
-          } else {
-            // Connection timed out, try again
-            console.log("[v0] 🔄 Pairing connection timed out, restarting...")
-            setTimeout(maintainConnection, 2000)
           }
         } catch (error) {
           console.error("[v0] ❌ Error maintaining pairing:", error)
@@ -72,15 +70,14 @@ export function BotPairingCard({ bot: initialBot }: BotPairingCardProps) {
       const interval = setInterval(async () => {
         try {
           const response = await fetch(`/api/bots/${bot.id}/status`)
-          if (!response.ok) {
-            throw new Error(`Failed to fetch bot status: ${response.status} ${response.statusText}`)
-          }
-          const data = await response.json()
-          setBot(data.bot)
+          if (response.ok) {
+            const data = await response.json()
+            setBot(data.bot)
 
-          if (data.bot.is_connected || data.bot.status === "deployed") {
-            setIsPolling(false)
-            clearInterval(interval)
+            if (data.bot.is_connected || data.bot.status === "deployed") {
+              setIsPolling(false)
+              clearInterval(interval)
+            }
           }
         } catch (error) {
           console.error("[v0] Error polling bot status:", error)

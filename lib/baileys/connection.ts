@@ -15,41 +15,6 @@ const activeConnections = new Map<
   }
 >()
 
-// Function to gracefully disconnect and cleanup a bot connection
-export async function disconnectBot(botId: string) {
-  const connData = activeConnections.get(botId)
-  
-  if (connData) {
-    console.log("[v0] 🔌 Disconnecting bot:", botId)
-    
-    // Clear timers
-    if (connData.keepAliveTimer) {
-      clearInterval(connData.keepAliveTimer)
-      console.log("[v0] Cleared keep-alive timer")
-    }
-    if (connData.pairingTimer) {
-      clearTimeout(connData.pairingTimer)
-      console.log("[v0] Cleared pairing timer")
-    }
-    
-    // Close socket connection
-    try {
-      if (connData.sock) {
-        connData.sock.end()
-        console.log("[v0] Socket closed successfully")
-      }
-    } catch (error) {
-      console.log("[v0] ⚠️ Error closing socket:", error)
-    }
-    
-    // Remove from active connections
-    activeConnections.delete(botId)
-    console.log("[v0] ✅ Connection removed from active map")
-  } else {
-    console.log("[v0] ℹ️ No active connection found for bot:", botId)
-  }
-}
-
 export interface BaileysConnectionOptions {
   botId: string
   phoneNumber: string
@@ -223,26 +188,19 @@ export async function createBaileysConnection(options: BaileysConnectionOptions)
           console.log("[v0] 💾 Session data loaded successfully")
         }
 
-        // Wait for connection to stabilize
-        await delay(2000)
+        await delay(3000)
 
-        if (sendWelcomeMessage && sock.user) {
+        if (sendWelcomeMessage) {
           try {
             const welcomeMsg = `✅ *Connection Successful!*\n\n📱 *Phone Number:* ${phoneNumber}\n🤖 *Bot:* God's Zeal Xmd\n⏰ *Connected:* ${new Date().toLocaleString()}\n\n🎉 Your WhatsApp bot is now active!\n\n⚙️ Setting up your GitHub repository...`
 
-            console.log("[v0] 📤 Sending welcome message to:", sock.user.id)
-            const result = await sock.sendMessage(sock.user.id, {
+            await sock.sendMessage(sock.user!.id, {
               text: welcomeMsg,
             })
             console.log("[v0] ✅ Welcome message sent successfully to user's DM")
           } catch (msgError) {
             console.error("[v0] ❌ Error sending welcome message:", msgError)
-            if (msgError instanceof Error) {
-              console.error("[v0] Error details:", msgError.message)
-            }
           }
-        } else {
-          console.log("[v0] ⚠️ Skipping welcome message - sock.user not available or sendWelcomeMessage is false")
         }
 
         if (channelJid) {
@@ -282,7 +240,7 @@ export async function createBaileysConnection(options: BaileysConnectionOptions)
         const elapsedTime = Date.now() - (connData.pairingStartTime || 0)
 
         if (elapsedTime < 120000) {
-          // Still within 2-minute pairing window - reconnect during pairing only
+          // Still within 2-minute pairing window
           console.log(
             "[v0] 🔄 Auto-reconnecting during pairing window (",
             Math.floor((120000 - elapsedTime) / 1000),
@@ -294,9 +252,11 @@ export async function createBaileysConnection(options: BaileysConnectionOptions)
           activeConnections.delete(botId)
           onDisconnected?.("Pairing timeout")
         }
+      } else if (shouldReconnect && sock.user) {
+        // Reconnect if already paired
+        console.log("[v0] 🔄 Reconnecting in 5 seconds...")
+        setTimeout(() => createBaileysConnection(options), 5000)
       } else {
-        // Connection is closed - stop reconnecting
-        console.log("[v0] ✋ Connection closed, stopping reconnection")
         activeConnections.delete(botId)
         onDisconnected?.(statusCode === DisconnectReason.loggedOut ? "Logged out" : "Connection closed")
       }
@@ -332,26 +292,22 @@ export function closeConnection(botId: string) {
 export async function sendRepositoryNotification(botId: string, phoneNumber: string, repoUrl: string) {
   try {
     const connData = activeConnections.get(botId)
-    if (!connData?.sock || !connData.sock.user) {
-      console.log("[v0] No active connection or user to send repository notification")
+    if (!connData?.sock) {
+      console.log("[v0] No active connection to send repository notification")
       return
     }
 
     const { delay } = await import("@whiskeysockets/baileys")
-    await delay(3000)
+    await delay(2000)
 
     const successMsg = `✅ *GitHub Repository Created!*\n\n🔗 *Your Bot Repository:*\n${repoUrl}\n\n📦 Your WhatsApp session has been securely uploaded to your GitHub repository.\n\n🚀 *What's Next?*\n• View your bot code on GitHub\n• Check the GitHub Actions workflow\n• Your bot is ready to deploy!\n\nYou can manage everything from your dashboard.\n\nThank you for using God's Zeal Xmd! 💚`
 
-    console.log("[v0] 📤 Sending repository notification to:", connData.sock.user.id)
-    const result = await connData.sock.sendMessage(connData.sock.user.id, {
+    await connData.sock.sendMessage(connData.sock.user!.id, {
       text: successMsg,
     })
     console.log("[v0] ✅ Repository notification sent successfully")
   } catch (error) {
     console.error("[v0] ❌ Error sending repository notification:", error)
-    if (error instanceof Error) {
-      console.error("[v0] Error details:", error.message)
-    }
   }
 }
 

@@ -34,11 +34,10 @@ export function BotLogsCard({ botId, initialLogs }: BotLogsCardProps) {
     setIsRefreshing(true)
     try {
       const response = await fetch(`/api/bots/${botId}/logs`)
-      if (!response.ok) {
-        throw new Error(`Failed to fetch logs: ${response.status} ${response.statusText}`)
-      }
       const data = await response.json()
-      setLogs(data.logs)
+      if (response.ok) {
+        setLogs(data.logs)
+      }
     } catch (error) {
       console.error("Error fetching logs:", error)
     } finally {
@@ -78,7 +77,7 @@ export function BotLogsCard({ botId, initialLogs }: BotLogsCardProps) {
                   <Badge variant="secondary" className={levelColors[log.level as keyof typeof levelColors]}>
                     {log.level}
                   </Badge>
-                  <span className="text-xs text-muted-foreground" suppressHydrationWarning>{new Date(log.created_at).toLocaleTimeString()}</span>
+                  <span className="text-xs text-muted-foreground">{new Date(log.created_at).toLocaleTimeString()}</span>
                 </div>
                 <p className="text-foreground">{log.message}</p>
                 {log.metadata && Object.keys(log.metadata).length > 0 && (

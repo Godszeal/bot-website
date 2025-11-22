@@ -80,7 +80,6 @@ export async function POST(request: Request) {
         botId: bot.id,
         phoneNumber: cleanNumber,
         channelJid,
-        sendWelcomeMessage: false, // maintain-pairing will send the welcome message
         onPairingCode: async (code) => {
           console.log("[v0] Pairing code callback triggered with code:", code)
           console.log("[v0] Attempting to update bot ID:", bot.id)
@@ -116,16 +115,26 @@ export async function POST(request: Request) {
           }
         },
         onConnected: async (sessionData) => {
-          // Fork and deploy is now handled by maintain-pairing endpoint
-          // This callback is mainly for session tracking during pairing phase
-          console.log("[v0] ✅ Session established during pairing phase")
-        },
-        onDisconnected: async (reason) => {
-          console.log("[v0] Bot disconnected during pairing:", reason)
+          console.log("[v0] Bot connected, starting fork and deploy")
           await supabase
             .from("bots")
             .update({
-              status: "error",
+              status: "active",
+              is_connected: true,
+              connected_at: new Date().toISOString(),
+            })
+            .eq("id", bot.id)
+
+          forkAndDeploy(bot.id, user.id, phoneNumber, sessionData, supabase).catch((error) => {
+            console.error("[v0] Error in fork and deploy:", error)
+          })
+        },
+        onDisconnected: async (reason) => {
+          console.log("[v0] Bot disconnected:", reason)
+          await supabase
+            .from("bots")
+            .update({
+              status: "inactive",
               is_connected: false,
             })
             .eq("id", bot.id)
