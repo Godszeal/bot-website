@@ -125,7 +125,9 @@ export function BotPairingCard({ bot: initialBot }: BotPairingCardProps) {
               <p className="text-sm font-medium">Connected Successfully!</p>
               <p className="text-xs text-muted-foreground">{bot.phone_number || "WhatsApp account linked"}</p>
               {bot.connected_at && (
-                <p className="text-xs text-muted-foreground">Connected {new Date(bot.connected_at).toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground" suppressHydrationWarning>
+                  Connected {new Date(bot.connected_at).toLocaleString()}
+                </p>
               )}
             </div>
           </div>
