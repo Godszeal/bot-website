@@ -6,8 +6,9 @@ import { cleanupSession, closeConnection } from "@/lib/baileys/connection"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params
     const supabase = await createClient()
 
     const {
@@ -22,7 +23,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     const { data: bot } = await supabase
       .from("bots")
       .select("*, users(github_token)")
-      .eq("id", params.id)
+      .eq("id", id)
       .eq("user_id", user.id)
       .single()
 
@@ -31,10 +32,10 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     }
 
     // Close active Baileys connection
-    closeConnection(params.id)
+    closeConnection(id)
 
     // Clean up session files
-    cleanupSession(params.id)
+    cleanupSession(id)
 
     // If bot has GitHub repository, clean up files and stop workflows
     if (bot.github_repo_url && (bot.users.github_token || process.env.ADMIN_GITHUB_TOKEN)) {
@@ -116,7 +117,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     }
 
     // Delete bot from database
-    const { error: deleteError } = await supabase.from("bots").delete().eq("id", params.id)
+    const { error: deleteError } = await supabase.from("bots").delete().eq("id", id)
 
     if (deleteError) {
       return NextResponse.json({ error: "Failed to delete bot" }, { status: 500 })

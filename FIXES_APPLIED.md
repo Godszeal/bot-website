@@ -1,6 +1,19 @@
-# Bug Fixes - November 22, 2025
+# Bug Fixes - November 22-23, 2025
 
 ## Issues Fixed
+
+### ✅ Issue 4: Bot Deletion Failing (Next.js params Promise)
+**Problem**: Deleting a bot threw error "Failed to delete bot"
+
+**Root Cause**: The DELETE function in the delete route wasn't awaiting the `params` Promise (Same issue as maintain-pairing route)
+
+**Solution Implemented**:
+- Changed params type from `{ params: { id: string } }` to `{ params: Promise<{ id: string }> }`
+- Added `const { id } = await params` at the start of the function
+- Updated all references from `params.id` to `id` throughout the function
+- This resolves the Promise and allows the delete operation to complete
+
+**Code Location**: `app/api/bots/[id]/delete/route.ts` line 12-14
 
 ### ✅ Issue 1: GitHub File Upload Error (SHA Missing)
 **Problem**: When updating `session/creds.json` on an existing fork, GitHub API returned error: `"sha" wasn't supplied`
