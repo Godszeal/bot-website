@@ -12,19 +12,35 @@ export async function GET(request: Request) {
 
     if (error) {
       console.error("[v0] GitHub OAuth error:", error)
-      return NextResponse.redirect(`${origin}/auth/error?message=${encodeURIComponent(error.message)}`)
+      return NextResponse.redirect(`${origin}/auth/login?error=${encodeURIComponent(error.message)}`)
     }
 
-    // Store GitHub access token if available
-    if (data.session?.provider_token) {
-      const { error: updateError } = await supabase
-        .from("users")
-        .update({ github_token: data.session.provider_token })
-        .eq("id", data.user?.id)
+    if (data.session?.provider_token && data.user) {
+      // Check if user exists, if not create
+      const { data: existingUser } = await supabase.from("users").select("id").eq("id", data.user.id).single()
 
-      if (updateError) {
-        console.error("[v0] Error storing GitHub token:", updateError)
+      if (!existingUser) {
+        await supabase.from("users").insert({
+          id: data.user.id,
+          email: data.user.email,
+          full_name:
+            data.user.user_metadata?.full_name || data.user.user_metadata?.name || data.user.email?.split("@")[0],
+          avatar_url: data.user.user_metadata?.avatar_url,
+          github_token: data.session.provider_token,
+        })
+      } else {
+        // Update existing user with GitHub token
+        await supabase
+          .from("users")
+          .update({
+            github_token: data.session.provider_token,
+            avatar_url: data.user.user_metadata?.avatar_url,
+            full_name: data.user.user_metadata?.full_name || data.user.user_metadata?.name || existingUser.full_name,
+          })
+          .eq("id", data.user.id)
       }
+
+      console.log("[v0] GitHub token stored successfully for user:", data.user.id)
     }
   }
 

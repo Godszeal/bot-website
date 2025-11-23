@@ -2,10 +2,10 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Github, Trash2, Settings } from "lucide-react"
+import { Github, Trash2, Settings, CheckCircle } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 interface Bot {
   id: string
@@ -22,6 +22,24 @@ export function BotActionsCard({ bot }: BotActionsCardProps) {
   const router = useRouter()
   const [isDeleting, setIsDeleting] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
+  const [isGitHubConnected, setIsGitHubConnected] = useState(false)
+  const [isCheckingConnection, setIsCheckingConnection] = useState(true)
+
+  useEffect(() => {
+    const checkConnection = async () => {
+      try {
+        const response = await fetch("/api/github/connect")
+        const data = await response.json()
+        setIsGitHubConnected(data.connected)
+      } catch (error) {
+        console.error("[v0] Error checking GitHub connection:", error)
+      } finally {
+        setIsCheckingConnection(false)
+      }
+    }
+
+    checkConnection()
+  }, [])
 
   const handleDelete = async () => {
     if (
@@ -62,14 +80,13 @@ export function BotActionsCard({ bot }: BotActionsCardProps) {
       const data = await response.json()
 
       if (data.authUrl) {
-        // Redirect to GitHub OAuth
         window.location.href = data.authUrl
       } else if (data.connected) {
-        alert("GitHub is already connected!")
+        setIsGitHubConnected(true)
         router.refresh()
       }
     } catch (error) {
-      console.error("Error connecting GitHub:", error)
+      console.error("[v0] Error connecting GitHub:", error)
       alert("Failed to connect GitHub")
     } finally {
       setIsConnecting(false)
@@ -102,10 +119,29 @@ export function BotActionsCard({ bot }: BotActionsCardProps) {
             variant="outline"
             className="w-full gap-2 bg-transparent text-sm sm:text-base"
             onClick={handleConnectGitHub}
-            disabled={isConnecting}
+            disabled={isConnecting || isCheckingConnection}
           >
-            <Github className="h-4 w-4" />
-            {isConnecting ? "Connecting..." : "Connect GitHub"}
+            {isCheckingConnection ? (
+              <>
+                <Github className="h-4 w-4 animate-pulse" />
+                Checking...
+              </>
+            ) : isGitHubConnected ? (
+              <>
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                GitHub Connected
+              </>
+            ) : isConnecting ? (
+              <>
+                <Github className="h-4 w-4 animate-spin" />
+                Connecting...
+              </>
+            ) : (
+              <>
+                <Github className="h-4 w-4" />
+                Connect GitHub
+              </>
+            )}
           </Button>
         )}
 
