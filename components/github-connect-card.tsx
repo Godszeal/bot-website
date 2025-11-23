@@ -2,7 +2,8 @@
 
 import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Github, CheckCircle2 } from "lucide-react"
+import { Github, CheckCircle2, ExternalLink } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 interface Bot {
   id: string
@@ -98,23 +99,31 @@ export function GitHubConnectCard({ bot }: GitHubConnectCardProps) {
             <Github className="h-5 w-5 text-green-600 shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate text-green-700">{bot.github_repo_name}</p>
-              <p className="text-xs text-green-600">Branch: {bot.github_branch || 'main'}</p>
+              <p className="text-xs text-green-600">Branch: {bot.github_branch || "main"}</p>
             </div>
             <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
           </div>
 
-          <a
-            href={bot.github_repo_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-xs sm:text-sm text-primary hover:underline font-medium"
-          >
-            View Repository on GitHub →
+          <a href={bot.github_repo_url} target="_blank" rel="noopener noreferrer" className="w-full">
+            <Button variant="outline" className="w-full gap-2 bg-transparent text-sm sm:text-base">
+              <ExternalLink className="h-4 w-4" />
+              View Repository on GitHub
+            </Button>
           </a>
-          
-          <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted/30 rounded">
-            ✅ Session credentials uploaded<br/>
-            ✅ Deployment workflow configured
+
+          <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted/30 rounded space-y-1">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-3 w-3 text-green-500" />
+              <span>Session credentials (creds.json) uploaded</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-3 w-3 text-green-500" />
+              <span>Deployment workflow configured</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-3 w-3 text-green-500" />
+              <span>Repository forked and starred</span>
+            </div>
           </div>
         </CardContent>
       </Card>

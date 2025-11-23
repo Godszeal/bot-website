@@ -112,7 +112,7 @@
 ## How It Works Now
 
 ### User Flow:
-```
+\`\`\`
 1. Create Bot
    ↓
 2. Get Pairing Code
@@ -132,7 +132,7 @@
 9. Bot Status: deployed
    ↓
 10. Dashboard Shows Repository Link
-```
+\`\`\`
 
 ## Error Messages (Fixed)
 - ❌ "sha" wasn't supplied - FIXED

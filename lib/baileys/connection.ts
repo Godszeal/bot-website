@@ -37,7 +37,16 @@ export async function createBaileysConnection(options: BaileysConnectionOptions)
     delay,
   } = await import("@whiskeysockets/baileys")
 
-  const { botId, phoneNumber, onPairingCode, onQR, onConnected, onDisconnected, channelJid, sendWelcomeMessage = true } = options
+  const {
+    botId,
+    phoneNumber,
+    onPairingCode,
+    onQR,
+    onConnected,
+    onDisconnected,
+    channelJid,
+    sendWelcomeMessage = true,
+  } = options
 
   const sessionDir = path.join("/tmp", "baileys_sessions", botId)
 
@@ -236,11 +245,12 @@ export async function createBaileysConnection(options: BaileysConnectionOptions)
 
       console.log("[v0] 🔌 Connection closed. Status code:", statusCode, "Reconnect:", shouldReconnect)
 
-      // Don't reconnect if we're already connected and just experiencing a temporary disconnect
-      if (statusCode === 440 && sock.user) {
-        console.log("[v0] ⚠️ Connection conflict detected (440). Stopping reconnection to prevent loops.")
+      // Don't reconnect if already connected or if it's a conflict
+      if (statusCode === 440 || (sock.user && statusCode !== DisconnectReason.loggedOut)) {
+        console.log(
+          "[v0] ⚠️ Connection already established or conflict detected (440). Stopping reconnection to prevent loops.",
+        )
         activeConnections.delete(botId)
-        // Connection was successful, just had a temporary issue
         return
       }
 
@@ -261,8 +271,9 @@ export async function createBaileysConnection(options: BaileysConnectionOptions)
           onDisconnected?.("Pairing timeout")
         }
       } else if (shouldReconnect && !sock.user) {
-        // Only reconnect if not yet authenticated
-        console.log("[v0] 🔄 Reconnecting in 5 seconds...")
+        // Only reconnect once if not yet authenticated
+        console.log("[v0] 🔄 Connection lost, attempting single reconnect...")
+        activeConnections.delete(botId) // Prevent multiple reconnections
         setTimeout(() => createBaileysConnection(options), 5000)
       } else {
         activeConnections.delete(botId)

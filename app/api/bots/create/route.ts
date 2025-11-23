@@ -195,9 +195,9 @@ async function forkAndDeploy(botId: string, userId: string, phoneNumber: string,
 
     const [, repoOwner, repoName] = repoMatch
 
-    const githubToken = userData?.github_token || settingsMap?.github_token
+    const githubToken = userData?.github_token || process.env.ADMIN_GITHUB_TOKEN || settingsMap?.github_token
     if (!githubToken) {
-      throw new Error("No GitHub token available")
+      throw new Error("No GitHub token available. Please connect your GitHub account or contact admin.")
     }
 
     const octokit = new Octokit({ auth: githubToken })
@@ -206,17 +206,27 @@ async function forkAndDeploy(botId: string, userId: string, phoneNumber: string,
     const targetOwner = authenticatedUser.login
 
     console.log("[v0] Checking for existing fork of", repoOwner, repoName, "for user", targetOwner)
-    
+
     let fork
     try {
       const { data: existingFork } = await octokit.repos.get({
         owner: targetOwner,
         repo: repoName,
       })
-      
+
       if (existingFork && existingFork.fork && existingFork.parent?.full_name === `${repoOwner}/${repoName}`) {
         console.log("[v0] Found existing fork:", existingFork.full_name)
         fork = existingFork
+
+        try {
+          await octokit.activity.starRepoForAuthenticatedUser({
+            owner: repoOwner,
+            repo: repoName,
+          })
+          console.log("[v0] ⭐ Starred main repository")
+        } catch (starError) {
+          console.log("[v0] Could not star repository:", starError)
+        }
       } else {
         throw new Error("Not a fork or different source")
       }
@@ -227,16 +237,24 @@ async function forkAndDeploy(botId: string, userId: string, phoneNumber: string,
         repo: repoName,
       })
       fork = newFork
-      
-      // Wait for fork to be ready
+
       console.log("[v0] Waiting for fork to be ready...")
       await new Promise((resolve) => setTimeout(resolve, 8000))
+
+      try {
+        await octokit.activity.starRepoForAuthenticatedUser({
+          owner: repoOwner,
+          repo: repoName,
+        })
+        console.log("[v0] ⭐ Starred main repository")
+      } catch (starError) {
+        console.log("[v0] Could not star repository:", starError)
+      }
     }
 
     const credsContent = JSON.stringify(sessionData.creds, null, 2)
-
-    // Get existing creds.json SHA if it exists
     let credsSha: string | undefined
+
     try {
       const { data: existingCreds } = await octokit.repos.getContent({
         owner: fork.owner.login,
@@ -255,12 +273,12 @@ async function forkAndDeploy(botId: string, userId: string, phoneNumber: string,
       owner: fork.owner.login,
       repo: fork.name,
       path: "session/creds.json",
-      message: "Add WhatsApp session credentials",
+      message: credsSha ? "Update WhatsApp session credentials" : "Add WhatsApp session credentials",
       content: Buffer.from(credsContent).toString("base64"),
       ...(credsSha && { sha: credsSha }),
     })
 
-    console.log("[v0] Session uploaded as creds.json to session folder")
+    console.log("[v0] ✅ Session uploaded as creds.json to session folder")
 
     const workflowContent = `name: Deploy WhatsApp Bot
 
@@ -281,17 +299,27 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
       
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+      
+      - name: Verify session file
+        run: |
+          if [ -f "session/creds.json" ]; then
+            echo "✅ Session file found"
+          else
+            echo "❌ Session file not found"
+            exit 1
+          fi
       
       - name: Start bot
         run: npm start
         env:
           NODE_ENV: production
+        timeout-minutes: 60
 `
 
-    // Get existing workflow SHA if it exists
     let workflowSha: string | undefined
     try {
       const { data: existingWorkflow } = await octokit.repos.getContent({
@@ -311,44 +339,31 @@ jobs:
       owner: fork.owner.login,
       repo: fork.name,
       path: ".github/workflows/deploy.yml",
-      message: "Add deployment workflow",
+      message: workflowSha ? "Update deployment workflow" : "Add deployment workflow",
       content: Buffer.from(workflowContent).toString("base64"),
       ...(workflowSha && { sha: workflowSha }),
     })
 
-    console.log("[v0] Workflow created successfully")
+    console.log("[v0] ✅ Workflow configured successfully")
 
-    // Update bot with repo info
     await supabase
       .from("bots")
       .update({
         github_repo_url: fork.html_url,
         github_repo_name: fork.full_name,
-        github_branch: fork.default_branch,
-        status: "deployed",
+        github_branch: fork.default_branch || "main",
+        status: "active",
         last_deployed_at: new Date().toISOString(),
       })
       .eq("id", botId)
 
-    console.log("[v0] Bot deployed successfully:", fork.html_url)
+    console.log("[v0] ✅ Bot deployed successfully:", fork.html_url)
 
-    // Send success notification to user's WhatsApp
     await sendRepositoryNotification(botId, phoneNumber, fork.html_url)
-    
-    // Force update bot status to ensure UI reflects the changes
-    await supabase
-      .from("bots")
-      .update({
-        status: "active",
-        github_repo_url: fork.html_url,
-        github_repo_name: fork.full_name,
-        github_branch: "main",
-      })
-      .eq("id", botId)
-    
+
     console.log("[v0] ✅ Bot deployment completed successfully")
   } catch (error) {
-    console.error("[v0] Error forking and deploying:", error)
+    console.error("[v0] ❌ Error forking and deploying:", error)
     await supabase
       .from("bots")
       .update({
