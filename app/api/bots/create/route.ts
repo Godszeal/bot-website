@@ -280,6 +280,99 @@ async function forkAndDeploy(botId: string, userId: string, phoneNumber: string,
 
     console.log("[v0] ✅ Session uploaded as creds.json to session folder")
 
+    const packageLockContent = {
+      name: "God's Zeal Xmd",
+      version: "1.0.0",
+      lockfileVersion: 3,
+      requires: true,
+      packages: {
+        "": {
+          name: "God's Zeal Xmd",
+          version: "1.0.0",
+          license: "ISC",
+          dependencies: {
+            "@adiwajshing/keyed-db": "^0.2.4",
+            "@ffmpeg/ffmpeg": "^0.12.15",
+            "@hapi/boom": "^10.0.1",
+            "@types/node": "^18.0.6",
+            "@whiskeysockets/baileys": "^6.7.18",
+            "awesome-phonenumber": "^5.9.0",
+            axios: "^1.8.4",
+            "adm-zip": "^0.5.10",
+            chalk: "^4.1.2",
+            cheerio: "^1.0.0-rc.12",
+            cookie: "^0.5.0",
+            dotenv: "^16.4.5",
+            events: "^3.3.0",
+            "file-type": "^16.5.4",
+            "fluent-ffmpeg": "^2.1.3",
+            "form-data": "^4.0.1",
+            "fs-extra": "^11.2.0",
+            gtts: "^0.2.1",
+            "human-readable": "^0.2.1",
+            jimp: "^1.6.0",
+            jsdom: "^22.1.0",
+            "libphonenumber-js": "^1.11.18",
+            libsignal: "^2.0.1",
+            "link-preview-js": "^3.0.5",
+            "moment-timezone": "^0.5.43",
+            mumaker: "^2.0.0",
+            "node-cache": "^5.1.2",
+            "node-fetch": "^2.7.0",
+            "node-id3": "^0.2.3",
+            "node-webpmux": "^3.1.0",
+            "node-youtube-music": "^0.8.3",
+            "performance-now": "^2.1.0",
+            phin: "^3.7.1",
+            pino: "^8.21.0",
+            qrcode: "^1.5.4",
+            "qrcode-reader": "^1.0.4",
+            "qrcode-terminal": "^0.12.0",
+            request: "^2.88.2",
+            "ruhend-scraper": "^8.3.0",
+            "safe-stable-stringify": "^2.5.0",
+            "set-cookie": "^0.0.4",
+            sharp: "^0.32.6",
+            "tough-cookie": "^5.0.0",
+            "translate-google-api": "^1.0.4",
+            ws: "^8.17.1",
+            yargs: "^17.6.0",
+            "yargs-parser": "^21.1.1",
+            "youtube-yts": "^2.0.0",
+            "youtubedl-core": "^4.11.7",
+            "yt-search": "^2.12.1",
+            "ytdl-core": "^4.11.5",
+          },
+        },
+      },
+    }
+
+    let packageLockSha: string | undefined
+    try {
+      const { data: existingPackageLock } = await octokit.repos.getContent({
+        owner: fork.owner.login,
+        repo: fork.name,
+        path: "package-lock.json",
+      })
+      if ("sha" in existingPackageLock) {
+        packageLockSha = existingPackageLock.sha
+        console.log("[v0] Found existing package-lock.json with SHA:", packageLockSha)
+      }
+    } catch (error) {
+      console.log("[v0] No existing package-lock.json found, will create new one")
+    }
+
+    await octokit.repos.createOrUpdateFileContents({
+      owner: fork.owner.login,
+      repo: fork.name,
+      path: "package-lock.json",
+      message: packageLockSha ? "Update package-lock.json" : "Add package-lock.json for npm caching",
+      content: Buffer.from(JSON.stringify(packageLockContent, null, 2)).toString("base64"),
+      ...(packageLockSha && { sha: packageLockSha }),
+    })
+
+    console.log("[v0] ✅ package-lock.json created/updated")
+
     const workflowContent = `name: Deploy WhatsApp Bot
 
 on:
@@ -299,10 +392,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
       
       - name: Install dependencies
-        run: npm ci
+        run: |
+          if [ -f "package-lock.json" ]; then
+            echo "Using package-lock.json"
+            npm ci
+          else
+            echo "No package-lock.json found, using npm install"
+            npm install
+          fi
       
       - name: Verify session file
         run: |
@@ -314,10 +413,11 @@ jobs:
           fi
       
       - name: Start bot
-        run: npm start
+        run: |
+          echo "Starting WhatsApp bot..."
+          timeout 3600 npm start || echo "Bot stopped after 1 hour"
         env:
           NODE_ENV: production
-        timeout-minutes: 60
 `
 
     let workflowSha: string | undefined
