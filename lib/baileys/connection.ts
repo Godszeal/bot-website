@@ -236,6 +236,14 @@ export async function createBaileysConnection(options: BaileysConnectionOptions)
 
       console.log("[v0] 🔌 Connection closed. Status code:", statusCode, "Reconnect:", shouldReconnect)
 
+      // Don't reconnect if we're already connected and just experiencing a temporary disconnect
+      if (statusCode === 440 && sock.user) {
+        console.log("[v0] ⚠️ Connection conflict detected (440). Stopping reconnection to prevent loops.")
+        activeConnections.delete(botId)
+        // Connection was successful, just had a temporary issue
+        return
+      }
+
       if (shouldReconnect && connData?.isPairing) {
         const elapsedTime = Date.now() - (connData.pairingStartTime || 0)
 
@@ -252,8 +260,8 @@ export async function createBaileysConnection(options: BaileysConnectionOptions)
           activeConnections.delete(botId)
           onDisconnected?.("Pairing timeout")
         }
-      } else if (shouldReconnect && sock.user) {
-        // Reconnect if already paired
+      } else if (shouldReconnect && !sock.user) {
+        // Only reconnect if not yet authenticated
         console.log("[v0] 🔄 Reconnecting in 5 seconds...")
         setTimeout(() => createBaileysConnection(options), 5000)
       } else {
@@ -292,7 +300,7 @@ export function closeConnection(botId: string) {
 export async function sendRepositoryNotification(botId: string, phoneNumber: string, repoUrl: string) {
   try {
     const { delay } = await import("@whiskeysockets/baileys")
-    
+
     // Retry up to 3 times with increasing delays
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {

@@ -334,6 +334,19 @@ jobs:
 
     // Send success notification to user's WhatsApp
     await sendRepositoryNotification(botId, phoneNumber, fork.html_url)
+    
+    // Force update bot status to ensure UI reflects the changes
+    await supabase
+      .from("bots")
+      .update({
+        status: "active",
+        github_repo_url: fork.html_url,
+        github_repo_name: fork.full_name,
+        github_branch: "main",
+      })
+      .eq("id", botId)
+    
+    console.log("[v0] ✅ Bot deployment completed successfully")
   } catch (error) {
     console.error("[v0] Error forking and deploying:", error)
     await supabase

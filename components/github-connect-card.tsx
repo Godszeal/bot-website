@@ -75,6 +75,10 @@ export function GitHubConnectCard({ bot }: GitHubConnectCardProps) {
       }
 
       setSuccess(true)
+      // Refresh the page to show updated repository
+      setTimeout(() => {
+        window.location.reload()
+      }, 2000)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to trigger deployment")
     } finally {

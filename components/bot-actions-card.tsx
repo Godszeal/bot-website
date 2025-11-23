@@ -56,10 +56,12 @@ export function BotActionsCard({ bot }: BotActionsCardProps) {
           </Button>
         </Link>
 
-        <Button variant="outline" className="w-full gap-2 bg-transparent" disabled>
-          <Github className="h-4 w-4" />
-          Connect GitHub
-        </Button>
+        <Link href={bot.github_repo_url || `https://github.com/${bot.github_repo_name || ''}`} target="_blank" rel="noopener noreferrer" className="block">
+          <Button variant="outline" className="w-full gap-2 bg-transparent">
+            <Github className="h-4 w-4" />
+            View on GitHub
+          </Button>
+        </Link>
 
         <Button variant="destructive" className="w-full gap-2" onClick={handleDelete} disabled={isDeleting}>
           <Trash2 className="h-4 w-4" />
