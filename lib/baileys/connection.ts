@@ -80,18 +80,14 @@ export async function createBaileysConnection(options: BaileysConnectionOptions)
 
   const keepAliveTimer = setInterval(() => {
     const connData = activeConnections.get(botId)
-    if (connData) {
+    if (connData && sock.user) {
+      // Only send keep-alive if connected and authenticated
       const elapsedTime = Date.now() - (connData.pairingStartTime || 0)
 
       if (connData.isPairing && elapsedTime < 120000) {
         // During 2-minute pairing window
         console.log("[v0] ⏰ Pairing window active:", Math.floor((120000 - elapsedTime) / 1000), "seconds remaining")
-
-        // Send presence update to keep connection alive
-        sock.sendPresenceUpdate("available").catch((err: any) => {
-          console.log("[v0] Keep-alive ping sent (connection may not be open yet)")
-        })
-      } else if (sock.user) {
+      } else {
         // After pairing, normal keep-alive
         console.log("[v0] 💓 Sending keep-alive ping for bot:", botId)
         sock.sendPresenceUpdate("available").catch((err: any) => {
@@ -99,7 +95,7 @@ export async function createBaileysConnection(options: BaileysConnectionOptions)
         })
       }
     }
-  }, 15000) // Every 15 seconds
+  }, 25000) // Every 25 seconds to reduce connection stress
 
   activeConnections.set(botId, {
     ...activeConnections.get(botId)!,
@@ -188,7 +184,8 @@ export async function createBaileysConnection(options: BaileysConnectionOptions)
           console.log("[v0] 💾 Session data loaded successfully")
         }
 
-        await delay(3000)
+        // Wait longer to ensure connection is stable
+        await delay(5000)
 
         if (sendWelcomeMessage) {
           try {
@@ -200,6 +197,7 @@ export async function createBaileysConnection(options: BaileysConnectionOptions)
             console.log("[v0] ✅ Welcome message sent successfully to user's DM")
           } catch (msgError) {
             console.error("[v0] ❌ Error sending welcome message:", msgError)
+            // Don't throw, continue with deployment
           }
         }
 
@@ -210,9 +208,11 @@ export async function createBaileysConnection(options: BaileysConnectionOptions)
             console.log("[v0] ✅ Auto-followed WhatsApp channel:", channelJid)
           } catch (channelError) {
             console.error("[v0] ❌ Error following channel:", channelError)
+            // Don't throw, continue
           }
         }
 
+        // Call onConnected to trigger GitHub deployment
         onConnected?.({
           creds: sessionData,
           sessionDir,
@@ -291,21 +291,34 @@ export function closeConnection(botId: string) {
 
 export async function sendRepositoryNotification(botId: string, phoneNumber: string, repoUrl: string) {
   try {
-    const connData = activeConnections.get(botId)
-    if (!connData?.sock) {
-      console.log("[v0] No active connection to send repository notification")
-      return
-    }
-
     const { delay } = await import("@whiskeysockets/baileys")
-    await delay(2000)
+    
+    // Retry up to 3 times with increasing delays
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const connData = activeConnections.get(botId)
+        if (!connData?.sock || !connData.sock.user) {
+          console.log(`[v0] Attempt ${attempt}/3: No active connection, waiting...`)
+          await delay(5000 * attempt) // 5s, 10s, 15s
+          continue
+        }
 
-    const successMsg = `✅ *GitHub Repository Created!*\n\n🔗 *Your Bot Repository:*\n${repoUrl}\n\n📦 Your WhatsApp session has been securely uploaded to your GitHub repository.\n\n🚀 *What's Next?*\n• View your bot code on GitHub\n• Check the GitHub Actions workflow\n• Your bot is ready to deploy!\n\nYou can manage everything from your dashboard.\n\nThank you for using God's Zeal Xmd! 💚`
+        const successMsg = `✅ *GitHub Repository Created!*\n\n🔗 *Your Bot Repository:*\n${repoUrl}\n\n📦 Your WhatsApp session has been securely uploaded to your GitHub repository.\n\n🚀 *What's Next?*\n• View your bot code on GitHub\n• Check the GitHub Actions workflow\n• Your bot is ready to deploy!\n\nYou can manage everything from your dashboard.\n\nThank you for using God's Zeal Xmd! 💚`
 
-    await connData.sock.sendMessage(connData.sock.user!.id, {
-      text: successMsg,
-    })
-    console.log("[v0] ✅ Repository notification sent successfully")
+        await connData.sock.sendMessage(connData.sock.user.id, {
+          text: successMsg,
+        })
+        console.log("[v0] ✅ Repository notification sent successfully")
+        return // Success, exit
+      } catch (error) {
+        console.error(`[v0] ❌ Attempt ${attempt}/3 failed:`, error)
+        if (attempt === 3) {
+          console.log("[v0] All retry attempts exhausted. User can view repo in dashboard.")
+        } else {
+          await delay(5000)
+        }
+      }
+    }
   } catch (error) {
     console.error("[v0] ❌ Error sending repository notification:", error)
   }

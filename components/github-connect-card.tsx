@@ -87,14 +87,14 @@ export function GitHubConnectCard({ bot }: GitHubConnectCardProps) {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg sm:text-xl">GitHub Repository</CardTitle>
-          <CardDescription className="text-sm">Connected repository for deployment</CardDescription>
+          <CardDescription className="text-sm">Your bot repository is ready</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-muted">
-            <Github className="h-5 w-5 text-muted-foreground shrink-0" />
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+            <Github className="h-5 w-5 text-green-600 shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{bot.github_repo_name}</p>
-              <p className="text-xs text-muted-foreground">Branch: {bot.github_branch}</p>
+              <p className="text-sm font-medium truncate text-green-700">{bot.github_repo_name}</p>
+              <p className="text-xs text-green-600">Branch: {bot.github_branch || 'main'}</p>
             </div>
             <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
           </div>
@@ -103,10 +103,15 @@ export function GitHubConnectCard({ bot }: GitHubConnectCardProps) {
             href={bot.github_repo_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="block text-xs sm:text-sm text-primary hover:underline truncate"
+            className="inline-flex items-center gap-2 text-xs sm:text-sm text-primary hover:underline font-medium"
           >
-            View on GitHub →
+            View Repository on GitHub →
           </a>
+          
+          <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted/30 rounded">
+            ✅ Session credentials uploaded<br/>
+            ✅ Deployment workflow configured
+          </div>
         </CardContent>
       </Card>
     )
